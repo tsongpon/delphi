@@ -41,3 +41,51 @@ func toUserResponse(user *model.User) userResponse {
 		UpdatedAt: user.UpdatedAt.Format(time.RFC3339),
 	}
 }
+
+type createFeedbackRequest struct {
+	RevieweeID         string `json:"reviewee_id"`
+	CommunicationScore int    `json:"communication_score"`
+	LeadershipScore    int    `json:"leadership_score"`
+	TechnicalScore     int    `json:"technical_score"`
+	CollaborationScore int    `json:"collaboration_score"`
+	DeliveryScore      int    `json:"delivery_score"`
+	StrengthsComment   string `json:"strengths_comment"`
+	WeaknessesComment  string `json:"weaknesses_comment"`
+	Visibility         string `json:"visibility"`
+}
+
+type feedbackResponse struct {
+	ID                 string `json:"id"`
+	Period             string `json:"period"`
+	RevieweeID         string `json:"reviewee_id"`
+	ReviewerID         string `json:"reviewer_id"`
+	CommunicationScore int    `json:"communication_score"`
+	LeadershipScore    int    `json:"leadership_score"`
+	TechnicalScore     int    `json:"technical_score"`
+	CollaborationScore int    `json:"collaboration_score"`
+	DeliveryScore      int    `json:"delivery_score"`
+	StrengthsComment   string `json:"strengths_comment"`
+	WeaknessesComment  string `json:"weaknesses_comment"`
+	Visibility         string `json:"visibility"`
+	CreatedAt          string `json:"created_at"`
+	UpdatedAt          string `json:"updated_at"`
+}
+
+func toFeedbackResponse(f *model.Feedback) feedbackResponse {
+	return feedbackResponse{
+		ID:                 f.ID,
+		Period:             f.Period,
+		RevieweeID:         f.RevieweeID,
+		ReviewerID:         f.ReviewerID,
+		CommunicationScore: f.CommunicationScore,
+		LeadershipScore:    f.LeadershipScore,
+		TechnicalScore:     f.TechnicalScore,
+		CollaborationScore: f.CollaborationScore,
+		DeliveryScore:      f.DeliveryScore,
+		StrengthsComment:   f.StrengthsComment,
+		WeaknessesComment:  f.WeaknessesComment,
+		Visibility:         f.Visibility,
+		CreatedAt:          f.CreatedAt.Format(time.RFC3339),
+		UpdatedAt:          f.UpdatedAt.Format(time.RFC3339),
+	}
+}

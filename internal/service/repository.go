@@ -12,3 +12,8 @@ type UserRepository interface {
 	GetUserByID(ctx context.Context, id string) (*model.User, error)
 	GetUsersByTeamID(ctx context.Context, teamID string) ([]*model.User, error)
 }
+
+type FeedbackRepository interface {
+	CreateFeedback(ctx context.Context, feedback *model.Feedback) (*model.Feedback, error)
+	GetFeedback(ctx context.Context, reviewerID, revieweeID, period string) (*model.Feedback, error)
+}

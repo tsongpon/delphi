@@ -11,3 +11,7 @@ type UserService interface {
 	LoginUser(ctx context.Context, email, password string) (string, error)
 	GetTeammates(ctx context.Context, userID string) ([]*model.User, error)
 }
+
+type FeedbackService interface {
+	CreateFeedback(ctx context.Context, feedback *model.Feedback) (*model.Feedback, error)
+}

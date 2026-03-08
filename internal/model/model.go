@@ -19,3 +19,20 @@ type User struct {
 	UpdatedAt time.Time
 	TeamID    string
 }
+
+type Feedback struct {
+	ID                 string
+	Period             string
+	RevieweeID         string
+	ReviewerID         string
+	CommunicationScore int
+	LeadershipScore    int
+	TechnicalScore     int
+	CollaborationScore int
+	DeliveryScore      int
+	StrengthsComment   string
+	WeaknessesComment  string
+	Visibility         string
+	CreatedAt          time.Time
+	UpdatedAt          time.Time
+}

@@ -40,9 +40,14 @@ func main() {
 	}
 
 	userRepo := repository.NewUserFirestoreRepository(firestoreClient)
+	feedbackRepo := repository.NewFeedbackFirestoreRepository(firestoreClient)
+
 	userService := service.NewUserService(userRepo, jwtSecret)
+	feedbackService := service.NewFeedbackService(feedbackRepo, userRepo)
+
 	authHandler := handler.NewAuthHandler(userService)
 	userHandler := handler.NewUserHandler(userService)
+	feedbackHandler := handler.NewFeedbackHandler(feedbackService)
 
 	e := echo.New()
 	e.Use(middleware.CORS("*"))
@@ -57,6 +62,7 @@ func main() {
 	// Protected routes (JWT required)
 	api := e.Group("", custommiddleware.JWTAuth(jwtSecret))
 	api.GET("/users/:userID/teammates", userHandler.GetTeammates)
+	api.POST("/users/:userID/feedbacks", feedbackHandler.CreateFeedback)
 
 	if err := e.Start(":8080"); err != nil {
 		e.Logger.Error("failed to start server", "error", err)
