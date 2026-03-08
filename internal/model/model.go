@@ -3,9 +3,10 @@ package model
 import "time"
 
 type Team struct {
-	ID   string
-	Name string
-	Code string
+	ID        string
+	Name      string
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
 type User struct {

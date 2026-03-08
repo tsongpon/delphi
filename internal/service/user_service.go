@@ -77,3 +77,30 @@ func (s *UserServiceImpl) LoginUser(ctx context.Context, email, password string)
 
 	return signedToken, nil
 }
+
+// GetTeammates returns all users sharing the same team as the given user, excluding the user themselves.
+func (s *UserServiceImpl) GetTeammates(ctx context.Context, userID string) ([]*model.User, error) {
+	user, err := s.repo.GetUserByID(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get user: %w", err)
+	}
+
+	if user.TeamID == "" {
+		return []*model.User{}, nil
+	}
+
+	teammates, err := s.repo.GetUsersByTeamID(ctx, user.TeamID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get teammates: %w", err)
+	}
+
+	// Filter out the requesting user
+	result := make([]*model.User, 0, len(teammates))
+	for _, t := range teammates {
+		if t.ID != userID {
+			result = append(result, t)
+		}
+	}
+
+	return result, nil
+}
