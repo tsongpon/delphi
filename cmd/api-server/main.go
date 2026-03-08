@@ -9,6 +9,7 @@ import (
 	"cloud.google.com/go/firestore"
 	"github.com/joho/godotenv"
 	"github.com/labstack/echo/v5"
+	"github.com/labstack/echo/v5/middleware"
 	"github.com/tsongpon/delphi/internal/handler"
 	"github.com/tsongpon/delphi/internal/repository"
 	"github.com/tsongpon/delphi/internal/service"
@@ -42,6 +43,7 @@ func main() {
 	authHandler := handler.NewAuthHandler(userService)
 
 	e := echo.New()
+	e.Use(middleware.CORS("*"))
 
 	e.GET("/ping", func(c *echo.Context) error {
 		return c.String(http.StatusOK, "pong")
