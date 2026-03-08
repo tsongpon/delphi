@@ -27,6 +27,7 @@ type userDocument struct {
 	Title     string    `firestore:"title"`
 	CreatedAt time.Time `firestore:"created_at"`
 	UpdatedAt time.Time `firestore:"updated_at"`
+	TeamID    string    `firestore:"team_id"`
 }
 
 func toDocument(user *model.User) *userDocument {
@@ -38,6 +39,7 @@ func toDocument(user *model.User) *userDocument {
 		Title:     user.Title,
 		CreatedAt: user.CreatedAt,
 		UpdatedAt: user.UpdatedAt,
+		TeamID:    user.TeamID,
 	}
 }
 
@@ -50,6 +52,7 @@ func toModel(doc *userDocument) *model.User {
 		Title:     doc.Title,
 		CreatedAt: doc.CreatedAt,
 		UpdatedAt: doc.UpdatedAt,
+		TeamID:    doc.TeamID,
 	}
 }
 
@@ -80,6 +83,46 @@ func (r *UserFirestoreRepository) CreateUser(ctx context.Context, user *model.Us
 	}
 
 	return user, nil
+}
+
+// GetUserByID fetches a user by document ID from the Firestore "users" collection.
+func (r *UserFirestoreRepository) GetUserByID(ctx context.Context, id string) (*model.User, error) {
+	docSnap, err := r.client.Collection(usersCollection).Doc(id).Get(ctx)
+	if err != nil {
+		logger.Error("failed to get user by ID", zap.String("id", id), zap.Error(err))
+		return nil, fmt.Errorf("user not found: %w", err)
+	}
+
+	var doc userDocument
+	if err := docSnap.DataTo(&doc); err != nil {
+		logger.Error("failed to deserialize user document", zap.Error(err))
+		return nil, fmt.Errorf("failed to deserialize user document: %w", err)
+	}
+
+	return toModel(&doc), nil
+}
+
+// GetUsersByTeamID queries the Firestore "users" collection for all users with the given team ID.
+func (r *UserFirestoreRepository) GetUsersByTeamID(ctx context.Context, teamID string) ([]*model.User, error) {
+	iter := r.client.Collection(usersCollection).Where("team_id", "==", teamID).Documents(ctx)
+	defer iter.Stop()
+
+	var users []*model.User
+	for {
+		docSnap, err := iter.Next()
+		if err != nil {
+			break
+		}
+
+		var doc userDocument
+		if err := docSnap.DataTo(&doc); err != nil {
+			logger.Error("failed to deserialize user document", zap.Error(err))
+			continue
+		}
+		users = append(users, toModel(&doc))
+	}
+
+	return users, nil
 }
 
 // GetUserByEmail queries the Firestore "users" collection for a user with the given email.

@@ -9,4 +9,5 @@ import (
 type UserService interface {
 	RegisterUser(ctx context.Context, user *model.User) (*model.User, error)
 	LoginUser(ctx context.Context, email, password string) (string, error)
+	GetTeammates(ctx context.Context, userID string) ([]*model.User, error)
 }

@@ -11,6 +11,7 @@ import (
 	"github.com/labstack/echo/v5"
 	"github.com/labstack/echo/v5/middleware"
 	"github.com/tsongpon/delphi/internal/handler"
+	custommiddleware "github.com/tsongpon/delphi/internal/middleware"
 	"github.com/tsongpon/delphi/internal/repository"
 	"github.com/tsongpon/delphi/internal/service"
 )
@@ -41,15 +42,21 @@ func main() {
 	userRepo := repository.NewUserFirestoreRepository(firestoreClient)
 	userService := service.NewUserService(userRepo, jwtSecret)
 	authHandler := handler.NewAuthHandler(userService)
+	userHandler := handler.NewUserHandler(userService)
 
 	e := echo.New()
 	e.Use(middleware.CORS("*"))
 
+	// Public routes
 	e.GET("/ping", func(c *echo.Context) error {
 		return c.String(http.StatusOK, "pong")
 	})
 	e.POST("/register", authHandler.RegisterUser)
 	e.POST("/login", authHandler.LoginUser)
+
+	// Protected routes (JWT required)
+	api := e.Group("", custommiddleware.JWTAuth(jwtSecret))
+	api.GET("/users/:userID/teammates", userHandler.GetTeammates)
 
 	if err := e.Start(":8080"); err != nil {
 		e.Logger.Error("failed to start server", "error", err)
