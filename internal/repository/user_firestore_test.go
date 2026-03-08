@@ -26,13 +26,15 @@ func newTestClient(t *testing.T) *firestore.Client {
 	require.NoError(t, err)
 
 	t.Cleanup(func() {
-		iter := client.Collection(usersCollection).Documents(ctx)
-		for {
-			doc, err := iter.Next()
-			if err != nil {
-				break
+		for _, collection := range []string{usersCollection, feedbacksCollection} {
+			iter := client.Collection(collection).Documents(ctx)
+			for {
+				doc, err := iter.Next()
+				if err != nil {
+					break
+				}
+				_, _ = doc.Ref.Delete(ctx)
 			}
-			_, _ = doc.Ref.Delete(ctx)
 		}
 		client.Close()
 	})

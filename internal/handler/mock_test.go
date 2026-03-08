@@ -24,3 +24,12 @@ func (m *mockUserService) LoginUser(ctx context.Context, email, password string)
 func (m *mockUserService) GetTeammates(ctx context.Context, userID string) ([]*model.User, error) {
 	return m.GetTeammatesFn(ctx, userID)
 }
+
+// mockFeedbackService implements FeedbackService for handler tests.
+type mockFeedbackService struct {
+	CreateFeedbackFn func(ctx context.Context, feedback *model.Feedback) (*model.Feedback, error)
+}
+
+func (m *mockFeedbackService) CreateFeedback(ctx context.Context, feedback *model.Feedback) (*model.Feedback, error) {
+	return m.CreateFeedbackFn(ctx, feedback)
+}
