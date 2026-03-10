@@ -17,9 +17,9 @@ func NewUserHandler(userService UserService) *UserHandler {
 }
 
 func (h *UserHandler) GetTeammates(c *echo.Context) error {
-	userID := c.Param("userID")
-	if userID == "" {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "userID is required"})
+	userID, ok := c.Get("user_id").(string)
+	if !ok || userID == "" {
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
 	}
 
 	ctx := c.Request().Context()

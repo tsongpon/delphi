@@ -35,9 +35,12 @@ func TestUserHandler_GetTeammates_Success(t *testing.T) {
 	h := NewUserHandler(mockSvc)
 
 	e := echo.New()
-	e.GET("/users/:userID/teammates", h.GetTeammates)
+	e.GET("/me/teammates", func(c *echo.Context) error {
+		c.Set("user_id", "user-123")
+		return h.GetTeammates(c)
+	})
 
-	req := httptest.NewRequest(http.MethodGet, "/users/user-123/teammates", nil)
+	req := httptest.NewRequest(http.MethodGet, "/me/teammates", nil)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 
@@ -64,9 +67,12 @@ func TestUserHandler_GetTeammates_ServiceError(t *testing.T) {
 	h := NewUserHandler(mockSvc)
 
 	e := echo.New()
-	e.GET("/users/:userID/teammates", h.GetTeammates)
+	e.GET("/me/teammates", func(c *echo.Context) error {
+		c.Set("user_id", "nonexistent")
+		return h.GetTeammates(c)
+	})
 
-	req := httptest.NewRequest(http.MethodGet, "/users/nonexistent/teammates", nil)
+	req := httptest.NewRequest(http.MethodGet, "/me/teammates", nil)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 
@@ -84,9 +90,12 @@ func TestUserHandler_GetTeammates_EmptyTeam(t *testing.T) {
 	h := NewUserHandler(mockSvc)
 
 	e := echo.New()
-	e.GET("/users/:userID/teammates", h.GetTeammates)
+	e.GET("/me/teammates", func(c *echo.Context) error {
+		c.Set("user_id", "user-123")
+		return h.GetTeammates(c)
+	})
 
-	req := httptest.NewRequest(http.MethodGet, "/users/user-123/teammates", nil)
+	req := httptest.NewRequest(http.MethodGet, "/me/teammates", nil)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 

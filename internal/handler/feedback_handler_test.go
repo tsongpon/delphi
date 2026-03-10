@@ -17,6 +17,14 @@ import (
 	"github.com/tsongpon/delphi/internal/service"
 )
 
+// helper: registers POST /feedbacks with user_id injected into context
+func setupFeedbackRoute(e *echo.Echo, h *FeedbackHandler, loggedInUserID string) {
+	e.POST("/feedbacks", func(c *echo.Context) error {
+		c.Set("user_id", loggedInUserID)
+		return h.CreateFeedback(c)
+	})
+}
+
 func TestCreateFeedback_Handler_Success(t *testing.T) {
 	now := time.Now()
 
@@ -33,6 +41,7 @@ func TestCreateFeedback_Handler_Success(t *testing.T) {
 	h := NewFeedbackHandler(mockSvc)
 
 	body := `{
+		"reviewer_id": "reviewer-123",
 		"reviewee_id": "reviewee-123",
 		"communication_score": 5,
 		"leadership_score": 4,
@@ -45,9 +54,9 @@ func TestCreateFeedback_Handler_Success(t *testing.T) {
 	}`
 
 	e := echo.New()
-	e.POST("/users/:userID/feedbacks", h.CreateFeedback)
+	setupFeedbackRoute(e, h, "reviewer-123")
 
-	req := httptest.NewRequest(http.MethodPost, "/users/reviewer-123/feedbacks", strings.NewReader(body))
+	req := httptest.NewRequest(http.MethodPost, "/feedbacks", strings.NewReader(body))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
@@ -79,9 +88,9 @@ func TestCreateFeedback_Handler_InvalidBody(t *testing.T) {
 	h := NewFeedbackHandler(mockSvc)
 
 	e := echo.New()
-	e.POST("/users/:userID/feedbacks", h.CreateFeedback)
+	setupFeedbackRoute(e, h, "reviewer-123")
 
-	req := httptest.NewRequest(http.MethodPost, "/users/reviewer-123/feedbacks", strings.NewReader("not-json"))
+	req := httptest.NewRequest(http.MethodPost, "/feedbacks", strings.NewReader("not-json"))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
@@ -95,21 +104,45 @@ func TestCreateFeedback_Handler_InvalidVisibility(t *testing.T) {
 	h := NewFeedbackHandler(mockSvc)
 
 	body := `{
+		"reviewer_id": "reviewer-123",
 		"reviewee_id": "reviewee-123",
 		"communication_score": 5,
 		"visibility": "public"
 	}`
 
 	e := echo.New()
-	e.POST("/users/:userID/feedbacks", h.CreateFeedback)
+	setupFeedbackRoute(e, h, "reviewer-123")
 
-	req := httptest.NewRequest(http.MethodPost, "/users/reviewer-123/feedbacks", strings.NewReader(body))
+	req := httptest.NewRequest(http.MethodPost, "/feedbacks", strings.NewReader(body))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 
 	assert.Equal(t, http.StatusBadRequest, rec.Code)
 	assert.Contains(t, rec.Body.String(), "visibility must be 'named' or 'anonymous'")
+}
+
+func TestCreateFeedback_Handler_ReviewerIDMismatch(t *testing.T) {
+	mockSvc := &mockFeedbackService{}
+	h := NewFeedbackHandler(mockSvc)
+
+	body := `{
+		"reviewer_id": "someone-else",
+		"reviewee_id": "reviewee-123",
+		"communication_score": 5,
+		"visibility": "named"
+	}`
+
+	e := echo.New()
+	setupFeedbackRoute(e, h, "reviewer-123")
+
+	req := httptest.NewRequest(http.MethodPost, "/feedbacks", strings.NewReader(body))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusForbidden, rec.Code)
+	assert.Contains(t, rec.Body.String(), "reviewer_id does not match logged in user")
 }
 
 func TestCreateFeedback_Handler_Duplicate(t *testing.T) {
@@ -122,15 +155,16 @@ func TestCreateFeedback_Handler_Duplicate(t *testing.T) {
 	h := NewFeedbackHandler(mockSvc)
 
 	body := `{
+		"reviewer_id": "reviewer-123",
 		"reviewee_id": "reviewee-123",
 		"communication_score": 5,
 		"visibility": "named"
 	}`
 
 	e := echo.New()
-	e.POST("/users/:userID/feedbacks", h.CreateFeedback)
+	setupFeedbackRoute(e, h, "reviewer-123")
 
-	req := httptest.NewRequest(http.MethodPost, "/users/reviewer-123/feedbacks", strings.NewReader(body))
+	req := httptest.NewRequest(http.MethodPost, "/feedbacks", strings.NewReader(body))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
@@ -149,15 +183,16 @@ func TestCreateFeedback_Handler_ReviewerNotFound(t *testing.T) {
 	h := NewFeedbackHandler(mockSvc)
 
 	body := `{
+		"reviewer_id": "nonexistent",
 		"reviewee_id": "reviewee-123",
 		"communication_score": 5,
 		"visibility": "named"
 	}`
 
 	e := echo.New()
-	e.POST("/users/:userID/feedbacks", h.CreateFeedback)
+	setupFeedbackRoute(e, h, "nonexistent")
 
-	req := httptest.NewRequest(http.MethodPost, "/users/nonexistent/feedbacks", strings.NewReader(body))
+	req := httptest.NewRequest(http.MethodPost, "/feedbacks", strings.NewReader(body))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
@@ -176,15 +211,16 @@ func TestCreateFeedback_Handler_RevieweeNotFound(t *testing.T) {
 	h := NewFeedbackHandler(mockSvc)
 
 	body := `{
+		"reviewer_id": "reviewer-123",
 		"reviewee_id": "nonexistent",
 		"communication_score": 5,
 		"visibility": "named"
 	}`
 
 	e := echo.New()
-	e.POST("/users/:userID/feedbacks", h.CreateFeedback)
+	setupFeedbackRoute(e, h, "reviewer-123")
 
-	req := httptest.NewRequest(http.MethodPost, "/users/reviewer-123/feedbacks", strings.NewReader(body))
+	req := httptest.NewRequest(http.MethodPost, "/feedbacks", strings.NewReader(body))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
@@ -203,15 +239,16 @@ func TestCreateFeedback_Handler_ServiceError(t *testing.T) {
 	h := NewFeedbackHandler(mockSvc)
 
 	body := `{
+		"reviewer_id": "reviewer-123",
 		"reviewee_id": "reviewee-123",
 		"communication_score": 5,
 		"visibility": "anonymous"
 	}`
 
 	e := echo.New()
-	e.POST("/users/:userID/feedbacks", h.CreateFeedback)
+	setupFeedbackRoute(e, h, "reviewer-123")
 
-	req := httptest.NewRequest(http.MethodPost, "/users/reviewer-123/feedbacks", strings.NewReader(body))
+	req := httptest.NewRequest(http.MethodPost, "/feedbacks", strings.NewReader(body))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
