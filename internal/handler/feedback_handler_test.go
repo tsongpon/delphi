@@ -233,12 +233,21 @@ func TestCreateFeedback_Handler_RevieweeNotFound(t *testing.T) {
 // GetMyFeedbacks handler tests
 // ---------------------------------------------------------------------------
 
+func setupGetMyFeedbacksRoute(e *echo.Echo, h *FeedbackHandler, userID string) {
+	e.GET("/me/feedbacks", func(c *echo.Context) error {
+		c.Set("user_id", userID)
+		return h.GetMyFeedbacks(c)
+	})
+}
+
 func TestGetMyFeedbacks_Handler_Success(t *testing.T) {
 	now := time.Now()
 
 	mockSvc := &mockFeedbackService{
-		GetFeedbacksForUserFn: func(_ context.Context, userID string) ([]*model.Feedback, error) {
+		GetFeedbacksForUserFn: func(_ context.Context, userID string, limit int, cursor string) ([]*model.Feedback, error) {
 			assert.Equal(t, "user-123", userID)
+			assert.Equal(t, defaultFeedbacksLimit+1, limit)
+			assert.Empty(t, cursor)
 			return []*model.Feedback{
 				{ID: "fb-1", Period: "1-2026", ReviewerID: "reviewer-1", RevieweeID: "user-123", CommunicationScore: 5, Visibility: "named", CreatedAt: now, UpdatedAt: now},
 				{ID: "fb-2", Period: "1-2026", ReviewerID: "reviewer-2", RevieweeID: "user-123", CommunicationScore: 4, Visibility: "anonymous", CreatedAt: now, UpdatedAt: now},
@@ -247,12 +256,8 @@ func TestGetMyFeedbacks_Handler_Success(t *testing.T) {
 	}
 
 	h := NewFeedbackHandler(mockSvc)
-
 	e := echo.New()
-	e.GET("/me/feedbacks", func(c *echo.Context) error {
-		c.Set("user_id", "user-123")
-		return h.GetMyFeedbacks(c)
-	})
+	setupGetMyFeedbacksRoute(e, h, "user-123")
 
 	req := httptest.NewRequest(http.MethodGet, "/me/feedbacks", nil)
 	rec := httptest.NewRecorder()
@@ -260,29 +265,26 @@ func TestGetMyFeedbacks_Handler_Success(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, rec.Code)
 
-	var resp []feedbackResponse
+	var resp paginatedFeedbackResponse
 	err := json.Unmarshal(rec.Body.Bytes(), &resp)
 	require.NoError(t, err)
 
-	assert.Len(t, resp, 2)
-	assert.Equal(t, "fb-1", resp[0].ID)
-	assert.Equal(t, "fb-2", resp[1].ID)
+	assert.Len(t, resp.Data, 2)
+	assert.Equal(t, "fb-1", resp.Data[0].ID)
+	assert.Equal(t, "fb-2", resp.Data[1].ID)
+	assert.Empty(t, resp.NextCursor)
 }
 
 func TestGetMyFeedbacks_Handler_Empty(t *testing.T) {
 	mockSvc := &mockFeedbackService{
-		GetFeedbacksForUserFn: func(_ context.Context, _ string) ([]*model.Feedback, error) {
+		GetFeedbacksForUserFn: func(_ context.Context, _ string, _ int, _ string) ([]*model.Feedback, error) {
 			return []*model.Feedback{}, nil
 		},
 	}
 
 	h := NewFeedbackHandler(mockSvc)
-
 	e := echo.New()
-	e.GET("/me/feedbacks", func(c *echo.Context) error {
-		c.Set("user_id", "user-123")
-		return h.GetMyFeedbacks(c)
-	})
+	setupGetMyFeedbacksRoute(e, h, "user-123")
 
 	req := httptest.NewRequest(http.MethodGet, "/me/feedbacks", nil)
 	rec := httptest.NewRecorder()
@@ -290,26 +292,23 @@ func TestGetMyFeedbacks_Handler_Empty(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, rec.Code)
 
-	var resp []feedbackResponse
+	var resp paginatedFeedbackResponse
 	err := json.Unmarshal(rec.Body.Bytes(), &resp)
 	require.NoError(t, err)
-	assert.Empty(t, resp)
+	assert.Empty(t, resp.Data)
+	assert.Empty(t, resp.NextCursor)
 }
 
 func TestGetMyFeedbacks_Handler_ServiceError(t *testing.T) {
 	mockSvc := &mockFeedbackService{
-		GetFeedbacksForUserFn: func(_ context.Context, _ string) ([]*model.Feedback, error) {
+		GetFeedbacksForUserFn: func(_ context.Context, _ string, _ int, _ string) ([]*model.Feedback, error) {
 			return nil, fmt.Errorf("firestore error")
 		},
 	}
 
 	h := NewFeedbackHandler(mockSvc)
-
 	e := echo.New()
-	e.GET("/me/feedbacks", func(c *echo.Context) error {
-		c.Set("user_id", "user-123")
-		return h.GetMyFeedbacks(c)
-	})
+	setupGetMyFeedbacksRoute(e, h, "user-123")
 
 	req := httptest.NewRequest(http.MethodGet, "/me/feedbacks", nil)
 	rec := httptest.NewRecorder()
@@ -317,6 +316,78 @@ func TestGetMyFeedbacks_Handler_ServiceError(t *testing.T) {
 
 	assert.Equal(t, http.StatusInternalServerError, rec.Code)
 	assert.Contains(t, rec.Body.String(), "failed to get feedbacks")
+}
+
+func TestGetMyFeedbacks_Handler_NextCursor(t *testing.T) {
+	now := time.Now()
+	// Build limit+1 feedbacks so that the handler detects a next page
+	feedbacks := make([]*model.Feedback, defaultFeedbacksLimit+1)
+	for i := range feedbacks {
+		feedbacks[i] = &model.Feedback{
+			ID:         fmt.Sprintf("fb-%d", i+1),
+			RevieweeID: "user-123",
+			CreatedAt:  now.Add(-time.Duration(i) * time.Second),
+			UpdatedAt:  now,
+		}
+	}
+
+	mockSvc := &mockFeedbackService{
+		GetFeedbacksForUserFn: func(_ context.Context, _ string, limit int, _ string) ([]*model.Feedback, error) {
+			return feedbacks[:limit], nil
+		},
+	}
+
+	h := NewFeedbackHandler(mockSvc)
+	e := echo.New()
+	setupGetMyFeedbacksRoute(e, h, "user-123")
+
+	req := httptest.NewRequest(http.MethodGet, "/me/feedbacks", nil)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+
+	var resp paginatedFeedbackResponse
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &resp))
+	assert.Len(t, resp.Data, defaultFeedbacksLimit)
+	assert.NotEmpty(t, resp.NextCursor)
+}
+
+func TestGetMyFeedbacks_Handler_CustomLimit(t *testing.T) {
+	now := time.Now()
+
+	mockSvc := &mockFeedbackService{
+		GetFeedbacksForUserFn: func(_ context.Context, _ string, limit int, _ string) ([]*model.Feedback, error) {
+			assert.Equal(t, 6, limit) // 5 + 1
+			return []*model.Feedback{
+				{ID: "fb-1", RevieweeID: "user-123", CreatedAt: now, UpdatedAt: now},
+			}, nil
+		},
+	}
+
+	h := NewFeedbackHandler(mockSvc)
+	e := echo.New()
+	setupGetMyFeedbacksRoute(e, h, "user-123")
+
+	req := httptest.NewRequest(http.MethodGet, "/me/feedbacks?limit=5", nil)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+}
+
+func TestGetMyFeedbacks_Handler_InvalidLimit(t *testing.T) {
+	mockSvc := &mockFeedbackService{}
+	h := NewFeedbackHandler(mockSvc)
+	e := echo.New()
+	setupGetMyFeedbacksRoute(e, h, "user-123")
+
+	req := httptest.NewRequest(http.MethodGet, "/me/feedbacks?limit=abc", nil)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+	assert.Contains(t, rec.Body.String(), "invalid limit")
 }
 
 func TestCreateFeedback_Handler_ServiceError(t *testing.T) {

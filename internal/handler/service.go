@@ -14,5 +14,5 @@ type UserService interface {
 
 type FeedbackService interface {
 	CreateFeedback(ctx context.Context, feedback *model.Feedback) (*model.Feedback, error)
-	GetFeedbacksForUser(ctx context.Context, userID string) ([]*model.Feedback, error)
+	GetFeedbacksForUser(ctx context.Context, userID string, limit int, cursor string) ([]*model.Feedback, error)
 }

@@ -1,8 +1,11 @@
 package handler
 
 import (
+	"encoding/base64"
 	"errors"
 	"net/http"
+	"strconv"
+	"time"
 
 	"github.com/labstack/echo/v5"
 	"github.com/tsongpon/delphi/internal/model"
@@ -64,22 +67,42 @@ func (h *FeedbackHandler) CreateFeedback(c *echo.Context) error {
 	return c.JSON(http.StatusCreated, toFeedbackResponse(created))
 }
 
+const defaultFeedbacksLimit = 15
+
 func (h *FeedbackHandler) GetMyFeedbacks(c *echo.Context) error {
 	userID, ok := c.Get("user_id").(string)
 	if !ok || userID == "" {
 		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
 	}
 
+	limit := defaultFeedbacksLimit
+	if limitParam := c.QueryParam("limit"); limitParam != "" {
+		parsed, err := strconv.Atoi(limitParam)
+		if err != nil || parsed <= 0 {
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid limit"})
+		}
+		limit = parsed
+	}
+	cursor := c.QueryParam("cursor")
+
 	ctx := c.Request().Context()
-	feedbacks, err := h.FeedbackService.GetFeedbacksForUser(ctx, userID)
+	// Request one extra to detect if a next page exists
+	feedbacks, err := h.FeedbackService.GetFeedbacksForUser(ctx, userID, limit+1, cursor)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to get feedbacks"})
 	}
 
-	response := make([]feedbackResponse, 0, len(feedbacks))
-	for _, f := range feedbacks {
-		response = append(response, toFeedbackResponse(f))
+	var nextCursor string
+	if len(feedbacks) > limit {
+		feedbacks = feedbacks[:limit]
+		lastCreatedAt := feedbacks[limit-1].CreatedAt
+		nextCursor = base64.StdEncoding.EncodeToString([]byte(lastCreatedAt.Format(time.RFC3339Nano)))
 	}
 
-	return c.JSON(http.StatusOK, response)
+	data := make([]feedbackResponse, 0, len(feedbacks))
+	for _, f := range feedbacks {
+		data = append(data, toFeedbackResponse(f))
+	}
+
+	return c.JSON(http.StatusOK, paginatedFeedbackResponse{Data: data, NextCursor: nextCursor})
 }

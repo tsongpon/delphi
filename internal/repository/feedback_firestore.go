@@ -2,10 +2,13 @@ package repository
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"time"
 
 	"cloud.google.com/go/firestore"
+	"google.golang.org/api/iterator"
+
 	"github.com/tsongpon/delphi/internal/logger"
 	"github.com/tsongpon/delphi/internal/model"
 	"github.com/tsongpon/delphi/internal/service"
@@ -93,17 +96,36 @@ func (r *FeedbackFirestoreRepository) CreateFeedback(ctx context.Context, feedba
 	return feedback, nil
 }
 
-func (r *FeedbackFirestoreRepository) GetFeedbacksByRevieweeID(ctx context.Context, revieweeID string) ([]*model.Feedback, error) {
-	iter := r.client.Collection(feedbacksCollection).
+func (r *FeedbackFirestoreRepository) GetFeedbacksByRevieweeID(ctx context.Context, revieweeID string, limit int, cursor string) ([]*model.Feedback, error) {
+	q := r.client.Collection(feedbacksCollection).
 		Where("reviewee_id", "==", revieweeID).
-		Documents(ctx)
+		OrderBy("created_at", firestore.Desc).
+		Limit(limit)
+
+	if cursor != "" {
+		decoded, err := base64.StdEncoding.DecodeString(cursor)
+		if err != nil {
+			return nil, fmt.Errorf("invalid cursor: %w", err)
+		}
+		cursorTime, err := time.Parse(time.RFC3339Nano, string(decoded))
+		if err != nil {
+			return nil, fmt.Errorf("invalid cursor: %w", err)
+		}
+		q = q.StartAfter(cursorTime)
+	}
+
+	iter := q.Documents(ctx)
 	defer iter.Stop()
 
 	var feedbacks []*model.Feedback
 	for {
 		docSnap, err := iter.Next()
-		if err != nil {
+		if err == iterator.Done {
 			break
+		}
+		if err != nil {
+			logger.Error("fail to get feedback data from Firestore", zap.Error(err))
+			return nil, fmt.Errorf("failed to get feedback data from Firestore: %w", err)
 		}
 		var doc feedbackDocument
 		if err := docSnap.DataTo(&doc); err != nil {

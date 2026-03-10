@@ -72,6 +72,11 @@ type feedbackResponse struct {
 	UpdatedAt          string `json:"updated_at"`
 }
 
+type paginatedFeedbackResponse struct {
+	Data       []feedbackResponse `json:"data"`
+	NextCursor string             `json:"next_cursor"`
+}
+
 func toFeedbackResponse(f *model.Feedback) feedbackResponse {
 	return feedbackResponse{
 		ID:                 f.ID,

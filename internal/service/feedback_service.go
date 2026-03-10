@@ -7,7 +7,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/tsongpon/delphi/internal/logger"
 	"github.com/tsongpon/delphi/internal/model"
+	"go.uber.org/zap"
 )
 
 var (
@@ -69,10 +71,11 @@ func (s *FeedbackServiceImpl) CreateFeedback(ctx context.Context, feedback *mode
 	return created, nil
 }
 
-// GetFeedbacksForUser returns all feedbacks where the given user is the reviewee.
-func (s *FeedbackServiceImpl) GetFeedbacksForUser(ctx context.Context, userID string) ([]*model.Feedback, error) {
-	feedbacks, err := s.repo.GetFeedbacksByRevieweeID(ctx, userID)
+// GetFeedbacksForUser returns feedbacks where the given user is the reviewee, with cursor pagination.
+func (s *FeedbackServiceImpl) GetFeedbacksForUser(ctx context.Context, userID string, limit int, cursor string) ([]*model.Feedback, error) {
+	feedbacks, err := s.repo.GetFeedbacksByRevieweeID(ctx, userID, limit, cursor)
 	if err != nil {
+		logger.Error("failed to get feedback", zap.Error(err))
 		return nil, fmt.Errorf("failed to get feedbacks: %w", err)
 	}
 	return feedbacks, nil

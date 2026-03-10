@@ -10,6 +10,7 @@ import (
 	"github.com/tsongpon/delphi/internal/model"
 	"github.com/tsongpon/delphi/internal/service"
 	"go.uber.org/zap"
+	"google.golang.org/api/iterator"
 )
 
 const usersCollection = "users"
@@ -110,8 +111,12 @@ func (r *UserFirestoreRepository) GetUsersByTeamID(ctx context.Context, teamID s
 	var users []*model.User
 	for {
 		docSnap, err := iter.Next()
-		if err != nil {
+		if err == iterator.Done {
 			break
+		}
+		if err != nil {
+			logger.Error("failed to get users by team ID", zap.Error(err))
+			return nil, fmt.Errorf("failed to get users by team ID: %w", err)
 		}
 
 		var doc userDocument

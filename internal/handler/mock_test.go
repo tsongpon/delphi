@@ -28,13 +28,13 @@ func (m *mockUserService) GetTeammates(ctx context.Context, userID string) ([]*m
 // mockFeedbackService implements FeedbackService for handler tests.
 type mockFeedbackService struct {
 	CreateFeedbackFn      func(ctx context.Context, feedback *model.Feedback) (*model.Feedback, error)
-	GetFeedbacksForUserFn func(ctx context.Context, userID string) ([]*model.Feedback, error)
+	GetFeedbacksForUserFn func(ctx context.Context, userID string, limit int, cursor string) ([]*model.Feedback, error)
 }
 
 func (m *mockFeedbackService) CreateFeedback(ctx context.Context, feedback *model.Feedback) (*model.Feedback, error) {
 	return m.CreateFeedbackFn(ctx, feedback)
 }
 
-func (m *mockFeedbackService) GetFeedbacksForUser(ctx context.Context, userID string) ([]*model.Feedback, error) {
-	return m.GetFeedbacksForUserFn(ctx, userID)
+func (m *mockFeedbackService) GetFeedbacksForUser(ctx context.Context, userID string, limit int, cursor string) ([]*model.Feedback, error) {
+	return m.GetFeedbacksForUserFn(ctx, userID, limit, cursor)
 }
