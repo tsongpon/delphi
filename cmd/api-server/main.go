@@ -39,15 +39,28 @@ func main() {
 		log.Fatal("JWT_SECRET environment variable is required")
 	}
 
+	adminSecret := os.Getenv("ADMIN_SECRET")
+	if adminSecret == "" {
+		log.Fatal("ADMIN_SECRET environment variable is required")
+	}
+
+	appBaseURL := os.Getenv("APP_BASE_URL")
+	if appBaseURL == "" {
+		log.Fatal("APP_BASE_URL environment variable is required")
+	}
+
 	userRepo := repository.NewUserFirestoreRepository(firestoreClient)
 	feedbackRepo := repository.NewFeedbackFirestoreRepository(firestoreClient)
+	tokenRepo := repository.NewTokenFirestoreRepository(firestoreClient)
 
 	userService := service.NewUserService(userRepo, jwtSecret)
 	feedbackService := service.NewFeedbackService(feedbackRepo, userRepo)
+	passwordResetService := service.NewPasswordResetService(tokenRepo, userRepo, appBaseURL)
 
 	authHandler := handler.NewAuthHandler(userService)
 	userHandler := handler.NewUserHandler(userService)
 	feedbackHandler := handler.NewFeedbackHandler(feedbackService)
+	passwordResetHandler := handler.NewPasswordResetHandler(passwordResetService)
 
 	e := echo.New()
 	e.Use(middleware.CORS("*"))
@@ -58,12 +71,17 @@ func main() {
 	})
 	e.POST("/register", authHandler.RegisterUser)
 	e.POST("/login", authHandler.LoginUser)
+	e.POST("/reset-password", passwordResetHandler.ResetPassword)
 
 	// Protected routes (JWT required)
 	api := e.Group("", custommiddleware.JWTAuth(jwtSecret))
 	api.GET("/me/teammates", userHandler.GetTeammates)
 	api.GET("/me/feedbacks", feedbackHandler.GetMyFeedbacks)
 	api.POST("/feedbacks", feedbackHandler.CreateFeedback)
+
+	// Admin routes (ADMIN_SECRET header required)
+	admin := e.Group("/admin", custommiddleware.AdminAuth(adminSecret))
+	admin.POST("/users/:userID/reset-link", passwordResetHandler.GenerateResetLink)
 
 	if err := e.Start(":8080"); err != nil {
 		e.Logger.Error("failed to start server", "error", err)

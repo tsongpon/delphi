@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"time"
 
 	"github.com/tsongpon/delphi/internal/model"
 )
@@ -15,4 +16,9 @@ type UserService interface {
 type FeedbackService interface {
 	CreateFeedback(ctx context.Context, feedback *model.Feedback) (*model.Feedback, error)
 	GetFeedbacksForUser(ctx context.Context, userID string, limit int, cursor string) ([]*model.Feedback, error)
+}
+
+type PasswordResetService interface {
+	GenerateResetLink(ctx context.Context, userID string) (resetLink string, expiresAt time.Time, err error)
+	ResetPassword(ctx context.Context, rawToken, newPassword string) error
 }

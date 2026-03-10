@@ -72,6 +72,16 @@ type feedbackResponse struct {
 	UpdatedAt          string `json:"updated_at"`
 }
 
+type generateResetLinkResponse struct {
+	ResetLink string `json:"reset_link"`
+	ExpiresAt string `json:"expires_at"`
+}
+
+type resetPasswordRequest struct {
+	Token       string `json:"token"`
+	NewPassword string `json:"new_password"`
+}
+
 type paginatedFeedbackResponse struct {
 	Data       []feedbackResponse `json:"data"`
 	NextCursor string             `json:"next_cursor"`

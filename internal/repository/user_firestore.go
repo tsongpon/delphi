@@ -130,6 +130,18 @@ func (r *UserFirestoreRepository) GetUsersByTeamID(ctx context.Context, teamID s
 	return users, nil
 }
 
+// UpdatePassword updates only the password field of a user document.
+func (r *UserFirestoreRepository) UpdatePassword(ctx context.Context, userID, hashedPassword string) error {
+	_, err := r.client.Collection(usersCollection).Doc(userID).Update(ctx, []firestore.Update{
+		{Path: "password", Value: hashedPassword},
+	})
+	if err != nil {
+		logger.Error("failed to update user password", zap.String("user_id", userID), zap.Error(err))
+		return fmt.Errorf("failed to update password: %w", err)
+	}
+	return nil
+}
+
 // GetUserByEmail queries the Firestore "users" collection for a user with the given email.
 func (r *UserFirestoreRepository) GetUserByEmail(ctx context.Context, email string) (*model.User, error) {
 	iter := r.client.Collection(usersCollection).Where("email", "==", email).Limit(1).Documents(ctx)

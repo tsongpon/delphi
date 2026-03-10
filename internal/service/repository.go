@@ -11,6 +11,13 @@ type UserRepository interface {
 	GetUserByEmail(ctx context.Context, email string) (*model.User, error)
 	GetUserByID(ctx context.Context, id string) (*model.User, error)
 	GetUsersByTeamID(ctx context.Context, teamID string) ([]*model.User, error)
+	UpdatePassword(ctx context.Context, userID, hashedPassword string) error
+}
+
+type TokenRepository interface {
+	SaveToken(ctx context.Context, token *model.PasswordResetToken) error
+	GetByTokenHash(ctx context.Context, tokenHash string) (*model.PasswordResetToken, error)
+	DeleteToken(ctx context.Context, tokenHash string) error
 }
 
 type FeedbackRepository interface {

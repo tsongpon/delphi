@@ -20,6 +20,13 @@ type User struct {
 	TeamID    string
 }
 
+type PasswordResetToken struct {
+	TokenHash string
+	UserID    string
+	ExpiresAt time.Time
+	CreatedAt time.Time
+}
+
 type Feedback struct {
 	ID                 string
 	Period             string
