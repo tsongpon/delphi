@@ -43,6 +43,7 @@ func toUserResponse(user *model.User) userResponse {
 }
 
 type createFeedbackRequest struct {
+	ReviewerID         string `json:"reviewer_id"`
 	RevieweeID         string `json:"reviewee_id"`
 	CommunicationScore int    `json:"communication_score"`
 	LeadershipScore    int    `json:"leadership_score"`

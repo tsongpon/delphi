@@ -61,8 +61,8 @@ func main() {
 
 	// Protected routes (JWT required)
 	api := e.Group("", custommiddleware.JWTAuth(jwtSecret))
-	api.GET("/users/:userID/teammates", userHandler.GetTeammates)
-	api.POST("/users/:userID/feedbacks", feedbackHandler.CreateFeedback)
+	api.GET("/me/teammates", userHandler.GetTeammates)
+	api.POST("/feedbacks", feedbackHandler.CreateFeedback)
 
 	if err := e.Start(":8080"); err != nil {
 		e.Logger.Error("failed to start server", "error", err)

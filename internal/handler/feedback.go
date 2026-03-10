@@ -18,9 +18,9 @@ func NewFeedbackHandler(feedbackService FeedbackService) *FeedbackHandler {
 }
 
 func (h *FeedbackHandler) CreateFeedback(c *echo.Context) error {
-	userID := c.Param("userID")
-	if userID == "" {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "userID is required"})
+	loggedInUserID, ok := c.Get("user_id").(string)
+	if !ok || loggedInUserID == "" {
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
 	}
 
 	var req createFeedbackRequest
@@ -28,12 +28,16 @@ func (h *FeedbackHandler) CreateFeedback(c *echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid request body"})
 	}
 
+	if req.ReviewerID != loggedInUserID {
+		return c.JSON(http.StatusForbidden, map[string]string{"error": "reviewer_id does not match logged in user"})
+	}
+
 	if req.Visibility != "named" && req.Visibility != "anonymous" {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "visibility must be 'named' or 'anonymous'"})
 	}
 
 	feedback := &model.Feedback{
-		ReviewerID:         userID,
+		ReviewerID:         req.ReviewerID,
 		RevieweeID:         req.RevieweeID,
 		CommunicationScore: req.CommunicationScore,
 		LeadershipScore:    req.LeadershipScore,
