@@ -63,3 +63,23 @@ func (h *FeedbackHandler) CreateFeedback(c *echo.Context) error {
 
 	return c.JSON(http.StatusCreated, toFeedbackResponse(created))
 }
+
+func (h *FeedbackHandler) GetMyFeedbacks(c *echo.Context) error {
+	userID, ok := c.Get("user_id").(string)
+	if !ok || userID == "" {
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
+	}
+
+	ctx := c.Request().Context()
+	feedbacks, err := h.FeedbackService.GetFeedbacksForUser(ctx, userID)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to get feedbacks"})
+	}
+
+	response := make([]feedbackResponse, 0, len(feedbacks))
+	for _, f := range feedbacks {
+		response = append(response, toFeedbackResponse(f))
+	}
+
+	return c.JSON(http.StatusOK, response)
+}

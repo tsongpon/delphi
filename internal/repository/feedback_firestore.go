@@ -93,6 +93,29 @@ func (r *FeedbackFirestoreRepository) CreateFeedback(ctx context.Context, feedba
 	return feedback, nil
 }
 
+func (r *FeedbackFirestoreRepository) GetFeedbacksByRevieweeID(ctx context.Context, revieweeID string) ([]*model.Feedback, error) {
+	iter := r.client.Collection(feedbacksCollection).
+		Where("reviewee_id", "==", revieweeID).
+		Documents(ctx)
+	defer iter.Stop()
+
+	var feedbacks []*model.Feedback
+	for {
+		docSnap, err := iter.Next()
+		if err != nil {
+			break
+		}
+		var doc feedbackDocument
+		if err := docSnap.DataTo(&doc); err != nil {
+			logger.Error("failed to deserialize feedback document", zap.Error(err))
+			return nil, fmt.Errorf("failed to deserialize feedback document: %w", err)
+		}
+		feedbacks = append(feedbacks, toFeedbackModel(&doc))
+	}
+
+	return feedbacks, nil
+}
+
 func (r *FeedbackFirestoreRepository) GetFeedback(ctx context.Context, reviewerID, revieweeID, period string) (*model.Feedback, error) {
 	iter := r.client.Collection(feedbacksCollection).
 		Where("reviewer_id", "==", reviewerID).

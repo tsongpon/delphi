@@ -62,6 +62,7 @@ func main() {
 	// Protected routes (JWT required)
 	api := e.Group("", custommiddleware.JWTAuth(jwtSecret))
 	api.GET("/me/teammates", userHandler.GetTeammates)
+	api.GET("/me/feedbacks", feedbackHandler.GetMyFeedbacks)
 	api.POST("/feedbacks", feedbackHandler.CreateFeedback)
 
 	if err := e.Start(":8080"); err != nil {

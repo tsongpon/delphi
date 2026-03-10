@@ -229,6 +229,96 @@ func TestCreateFeedback_Handler_RevieweeNotFound(t *testing.T) {
 	assert.Contains(t, rec.Body.String(), "reviewee not found")
 }
 
+// ---------------------------------------------------------------------------
+// GetMyFeedbacks handler tests
+// ---------------------------------------------------------------------------
+
+func TestGetMyFeedbacks_Handler_Success(t *testing.T) {
+	now := time.Now()
+
+	mockSvc := &mockFeedbackService{
+		GetFeedbacksForUserFn: func(_ context.Context, userID string) ([]*model.Feedback, error) {
+			assert.Equal(t, "user-123", userID)
+			return []*model.Feedback{
+				{ID: "fb-1", Period: "1-2026", ReviewerID: "reviewer-1", RevieweeID: "user-123", CommunicationScore: 5, Visibility: "named", CreatedAt: now, UpdatedAt: now},
+				{ID: "fb-2", Period: "1-2026", ReviewerID: "reviewer-2", RevieweeID: "user-123", CommunicationScore: 4, Visibility: "anonymous", CreatedAt: now, UpdatedAt: now},
+			}, nil
+		},
+	}
+
+	h := NewFeedbackHandler(mockSvc)
+
+	e := echo.New()
+	e.GET("/me/feedbacks", func(c *echo.Context) error {
+		c.Set("user_id", "user-123")
+		return h.GetMyFeedbacks(c)
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/me/feedbacks", nil)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+
+	var resp []feedbackResponse
+	err := json.Unmarshal(rec.Body.Bytes(), &resp)
+	require.NoError(t, err)
+
+	assert.Len(t, resp, 2)
+	assert.Equal(t, "fb-1", resp[0].ID)
+	assert.Equal(t, "fb-2", resp[1].ID)
+}
+
+func TestGetMyFeedbacks_Handler_Empty(t *testing.T) {
+	mockSvc := &mockFeedbackService{
+		GetFeedbacksForUserFn: func(_ context.Context, _ string) ([]*model.Feedback, error) {
+			return []*model.Feedback{}, nil
+		},
+	}
+
+	h := NewFeedbackHandler(mockSvc)
+
+	e := echo.New()
+	e.GET("/me/feedbacks", func(c *echo.Context) error {
+		c.Set("user_id", "user-123")
+		return h.GetMyFeedbacks(c)
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/me/feedbacks", nil)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+
+	var resp []feedbackResponse
+	err := json.Unmarshal(rec.Body.Bytes(), &resp)
+	require.NoError(t, err)
+	assert.Empty(t, resp)
+}
+
+func TestGetMyFeedbacks_Handler_ServiceError(t *testing.T) {
+	mockSvc := &mockFeedbackService{
+		GetFeedbacksForUserFn: func(_ context.Context, _ string) ([]*model.Feedback, error) {
+			return nil, fmt.Errorf("firestore error")
+		},
+	}
+
+	h := NewFeedbackHandler(mockSvc)
+
+	e := echo.New()
+	e.GET("/me/feedbacks", func(c *echo.Context) error {
+		c.Set("user_id", "user-123")
+		return h.GetMyFeedbacks(c)
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/me/feedbacks", nil)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusInternalServerError, rec.Code)
+	assert.Contains(t, rec.Body.String(), "failed to get feedbacks")
+}
+
 func TestCreateFeedback_Handler_ServiceError(t *testing.T) {
 	mockSvc := &mockFeedbackService{
 		CreateFeedbackFn: func(_ context.Context, _ *model.Feedback) (*model.Feedback, error) {

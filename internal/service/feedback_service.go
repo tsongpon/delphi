@@ -68,3 +68,12 @@ func (s *FeedbackServiceImpl) CreateFeedback(ctx context.Context, feedback *mode
 
 	return created, nil
 }
+
+// GetFeedbacksForUser returns all feedbacks where the given user is the reviewee.
+func (s *FeedbackServiceImpl) GetFeedbacksForUser(ctx context.Context, userID string) ([]*model.Feedback, error) {
+	feedbacks, err := s.repo.GetFeedbacksByRevieweeID(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get feedbacks: %w", err)
+	}
+	return feedbacks, nil
+}
