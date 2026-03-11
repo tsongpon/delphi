@@ -109,6 +109,7 @@ func (r *FeedbackFirestoreRepository) GetFeedbacksByRevieweeID(ctx context.Conte
 		}
 		cursorTime, err := time.Parse(time.RFC3339Nano, string(decoded))
 		if err != nil {
+			logger.Error("failed to parse cursor time", zap.Error(err))
 			return nil, fmt.Errorf("invalid cursor: %w", err)
 		}
 		q = q.StartAfter(cursorTime)
