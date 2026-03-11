@@ -24,4 +24,5 @@ type FeedbackRepository interface {
 	CreateFeedback(ctx context.Context, feedback *model.Feedback) (*model.Feedback, error)
 	GetFeedback(ctx context.Context, reviewerID, revieweeID, period string) (*model.Feedback, error)
 	GetFeedbacksByRevieweeID(ctx context.Context, revieweeID string, limit int, cursor string) ([]*model.Feedback, error)
+	GetFeedbacksByReviewerID(ctx context.Context, reviewerID string, limit int, cursor string) ([]*model.Feedback, error)
 }

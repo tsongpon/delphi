@@ -93,3 +93,42 @@ func TestGetFeedback_NotFound(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Nil(t, result)
 }
+
+func TestGetFeedbacksByReviewerID_Found(t *testing.T) {
+	client := newTestClient(t)
+	repo := NewFeedbackFirestoreRepository(client)
+	ctx := context.Background()
+
+	now := time.Now().Truncate(time.Microsecond)
+
+	doc := toFeedbackDocument(&model.Feedback{
+		ID:                 "given-fb-1",
+		Period:             "1-2026",
+		ReviewerID:         "reviewer-1",
+		RevieweeID:         "reviewee-1",
+		CommunicationScore: 5,
+		Visibility:         "named",
+		CreatedAt:          now,
+		UpdatedAt:          now,
+	})
+	_, err := client.Collection(feedbacksCollection).Doc("given-fb-1").Set(ctx, doc)
+	require.NoError(t, err)
+
+	results, err := repo.GetFeedbacksByReviewerID(ctx, "reviewer-1", 10, "")
+	require.NoError(t, err)
+	require.Len(t, results, 1)
+
+	assert.Equal(t, "given-fb-1", results[0].ID)
+	assert.Equal(t, "reviewer-1", results[0].ReviewerID)
+	assert.Equal(t, "reviewee-1", results[0].RevieweeID)
+}
+
+func TestGetFeedbacksByReviewerID_NotFound(t *testing.T) {
+	client := newTestClient(t)
+	repo := NewFeedbackFirestoreRepository(client)
+	ctx := context.Background()
+
+	results, err := repo.GetFeedbacksByReviewerID(ctx, "nonexistent-reviewer", 10, "")
+	assert.NoError(t, err)
+	assert.Empty(t, results)
+}

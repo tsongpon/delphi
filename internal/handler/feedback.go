@@ -106,3 +106,41 @@ func (h *FeedbackHandler) GetMyFeedbacks(c *echo.Context) error {
 
 	return c.JSON(http.StatusOK, paginatedFeedbackResponse{Data: data, NextCursor: nextCursor})
 }
+
+func (h *FeedbackHandler) GetMyGivenFeedbacks(c *echo.Context) error {
+	userID, ok := c.Get("user_id").(string)
+	if !ok || userID == "" {
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
+	}
+
+	limit := defaultFeedbacksLimit
+	if limitParam := c.QueryParam("limit"); limitParam != "" {
+		parsed, err := strconv.Atoi(limitParam)
+		if err != nil || parsed <= 0 {
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid limit"})
+		}
+		limit = parsed
+	}
+	cursor := c.QueryParam("cursor")
+
+	ctx := c.Request().Context()
+	// Request one extra to detect if a next page exists
+	feedbacks, err := h.FeedbackService.GetGivenFeedbacksForUser(ctx, userID, limit+1, cursor)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to get given feedbacks"})
+	}
+
+	var nextCursor string
+	if len(feedbacks) > limit {
+		feedbacks = feedbacks[:limit]
+		lastCreatedAt := feedbacks[limit-1].CreatedAt
+		nextCursor = base64.StdEncoding.EncodeToString([]byte(lastCreatedAt.Format(time.RFC3339Nano)))
+	}
+
+	data := make([]feedbackResponse, 0, len(feedbacks))
+	for _, f := range feedbacks {
+		data = append(data, toFeedbackResponse(f))
+	}
+
+	return c.JSON(http.StatusOK, paginatedFeedbackResponse{Data: data, NextCursor: nextCursor})
+}

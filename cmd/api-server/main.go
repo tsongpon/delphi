@@ -77,6 +77,7 @@ func main() {
 	api := e.Group("", custommiddleware.JWTAuth(jwtSecret))
 	api.GET("/me/teammates", userHandler.GetTeammates)
 	api.GET("/me/feedbacks", feedbackHandler.GetMyFeedbacks)
+	api.GET("/me/given-feedbacks", feedbackHandler.GetMyGivenFeedbacks)
 	api.POST("/feedbacks", feedbackHandler.CreateFeedback)
 
 	// Admin routes (ADMIN_SECRET header required)

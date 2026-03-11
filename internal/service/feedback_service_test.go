@@ -16,6 +16,7 @@ type mockFeedbackRepository struct {
 	CreateFeedbackFn           func(ctx context.Context, feedback *model.Feedback) (*model.Feedback, error)
 	GetFeedbackFn              func(ctx context.Context, reviewerID, revieweeID, period string) (*model.Feedback, error)
 	GetFeedbacksByRevieweeIDFn func(ctx context.Context, revieweeID string, limit int, cursor string) ([]*model.Feedback, error)
+	GetFeedbacksByReviewerIDFn func(ctx context.Context, reviewerID string, limit int, cursor string) ([]*model.Feedback, error)
 }
 
 func (m *mockFeedbackRepository) CreateFeedback(ctx context.Context, feedback *model.Feedback) (*model.Feedback, error) {
@@ -28,6 +29,10 @@ func (m *mockFeedbackRepository) GetFeedback(ctx context.Context, reviewerID, re
 
 func (m *mockFeedbackRepository) GetFeedbacksByRevieweeID(ctx context.Context, revieweeID string, limit int, cursor string) ([]*model.Feedback, error) {
 	return m.GetFeedbacksByRevieweeIDFn(ctx, revieweeID, limit, cursor)
+}
+
+func (m *mockFeedbackRepository) GetFeedbacksByReviewerID(ctx context.Context, reviewerID string, limit int, cursor string) ([]*model.Feedback, error) {
+	return m.GetFeedbacksByReviewerIDFn(ctx, reviewerID, limit, cursor)
 }
 
 // validUserRepo returns a mockUserRepository where both reviewer and reviewee exist.
@@ -253,6 +258,56 @@ func TestGetFeedbacksForUser_RepoError(t *testing.T) {
 	assert.Error(t, err)
 	assert.Nil(t, result)
 	assert.ErrorContains(t, err, "failed to get feedbacks")
+}
+
+func TestGetGivenFeedbacksForUser_Success(t *testing.T) {
+	now := time.Now()
+
+	repo := &mockFeedbackRepository{
+		GetFeedbacksByReviewerIDFn: func(_ context.Context, reviewerID string, limit int, cursor string) ([]*model.Feedback, error) {
+			assert.Equal(t, "user-1", reviewerID)
+			assert.Equal(t, 16, limit)
+			assert.Empty(t, cursor)
+			return []*model.Feedback{
+				{ID: "fb-1", ReviewerID: "user-1", RevieweeID: "reviewee-1", Period: "1-2026", CreatedAt: now, UpdatedAt: now},
+				{ID: "fb-2", ReviewerID: "user-1", RevieweeID: "reviewee-2", Period: "1-2026", CreatedAt: now, UpdatedAt: now},
+			}, nil
+		},
+	}
+
+	svc := NewFeedbackService(repo, validUserRepo())
+	result, err := svc.GetGivenFeedbacksForUser(context.Background(), "user-1", 16, "")
+	require.NoError(t, err)
+	assert.Len(t, result, 2)
+	assert.Equal(t, "fb-1", result[0].ID)
+	assert.Equal(t, "fb-2", result[1].ID)
+}
+
+func TestGetGivenFeedbacksForUser_Empty(t *testing.T) {
+	repo := &mockFeedbackRepository{
+		GetFeedbacksByReviewerIDFn: func(_ context.Context, _ string, _ int, _ string) ([]*model.Feedback, error) {
+			return []*model.Feedback{}, nil
+		},
+	}
+
+	svc := NewFeedbackService(repo, validUserRepo())
+	result, err := svc.GetGivenFeedbacksForUser(context.Background(), "user-1", 16, "")
+	require.NoError(t, err)
+	assert.Empty(t, result)
+}
+
+func TestGetGivenFeedbacksForUser_RepoError(t *testing.T) {
+	repo := &mockFeedbackRepository{
+		GetFeedbacksByReviewerIDFn: func(_ context.Context, _ string, _ int, _ string) ([]*model.Feedback, error) {
+			return nil, fmt.Errorf("firestore error")
+		},
+	}
+
+	svc := NewFeedbackService(repo, validUserRepo())
+	result, err := svc.GetGivenFeedbacksForUser(context.Background(), "user-1", 16, "")
+	assert.Error(t, err)
+	assert.Nil(t, result)
+	assert.ErrorContains(t, err, "failed to get given feedbacks")
 }
 
 func TestCreateFeedback_CreateRepoError(t *testing.T) {

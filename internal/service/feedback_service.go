@@ -80,3 +80,13 @@ func (s *FeedbackServiceImpl) GetFeedbacksForUser(ctx context.Context, userID st
 	}
 	return feedbacks, nil
 }
+
+// GetGivenFeedbacksForUser returns feedbacks where the given user is the reviewer, with cursor pagination.
+func (s *FeedbackServiceImpl) GetGivenFeedbacksForUser(ctx context.Context, userID string, limit int, cursor string) ([]*model.Feedback, error) {
+	feedbacks, err := s.repo.GetFeedbacksByReviewerID(ctx, userID, limit, cursor)
+	if err != nil {
+		logger.Error("failed to get given feedbacks", zap.Error(err))
+		return nil, fmt.Errorf("failed to get given feedbacks: %w", err)
+	}
+	return feedbacks, nil
+}
