@@ -40,6 +40,8 @@ func JWTAuth(secret string) echo.MiddlewareFunc {
 			c.Set("user_id", claims["sub"])
 			c.Set("email", claims["email"])
 			c.Set("name", claims["name"])
+			c.Set("role", claims["role"])
+			c.Set("team_id", claims["team_id"])
 
 			return next(c)
 		}

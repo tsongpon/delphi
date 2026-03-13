@@ -181,6 +181,53 @@ func (r *FeedbackFirestoreRepository) GetFeedbacksByReviewerID(ctx context.Conte
 	return feedbacks, nil
 }
 
+const firestoreInLimit = 30
+
+// GetFeedbacksByReviewerIDs fetches all feedbacks where reviewer_id is in the given list.
+// Firestore's `in` operator supports at most 30 values, so IDs are processed in batches.
+func (r *FeedbackFirestoreRepository) GetFeedbacksByReviewerIDs(ctx context.Context, reviewerIDs []string) ([]*model.Feedback, error) {
+	var all []*model.Feedback
+
+	for i := 0; i < len(reviewerIDs); i += firestoreInLimit {
+		end := i + firestoreInLimit
+		if end > len(reviewerIDs) {
+			end = len(reviewerIDs)
+		}
+		batch := reviewerIDs[i:end]
+
+		ids := make([]interface{}, len(batch))
+		for j, id := range batch {
+			ids[j] = id
+		}
+
+		iter := r.client.Collection(feedbacksCollection).
+			Where("reviewer_id", "in", ids).
+			Documents(ctx)
+
+		for {
+			docSnap, err := iter.Next()
+			if err == iterator.Done {
+				break
+			}
+			if err != nil {
+				iter.Stop()
+				logger.Error("failed to get team feedbacks from Firestore", zap.Error(err))
+				return nil, fmt.Errorf("failed to get team feedbacks: %w", err)
+			}
+			var doc feedbackDocument
+			if err := docSnap.DataTo(&doc); err != nil {
+				iter.Stop()
+				logger.Error("failed to deserialize feedback document", zap.Error(err))
+				return nil, fmt.Errorf("failed to deserialize feedback document: %w", err)
+			}
+			all = append(all, toFeedbackModel(&doc))
+		}
+		iter.Stop()
+	}
+
+	return all, nil
+}
+
 func (r *FeedbackFirestoreRepository) GetFeedback(ctx context.Context, reviewerID, revieweeID, period string) (*model.Feedback, error) {
 	iter := r.client.Collection(feedbacksCollection).
 		Where("reviewer_id", "==", reviewerID).

@@ -52,15 +52,18 @@ func main() {
 	userRepo := repository.NewUserFirestoreRepository(firestoreClient)
 	feedbackRepo := repository.NewFeedbackFirestoreRepository(firestoreClient)
 	tokenRepo := repository.NewTokenFirestoreRepository(firestoreClient)
+	teamRepo := repository.NewTeamFirestoreRepository(firestoreClient)
 
 	userService := service.NewUserService(userRepo, jwtSecret)
 	feedbackService := service.NewFeedbackService(feedbackRepo, userRepo)
 	passwordResetService := service.NewPasswordResetService(tokenRepo, userRepo, appBaseURL)
+	teamService := service.NewTeamService(teamRepo)
 
 	authHandler := handler.NewAuthHandler(userService)
 	userHandler := handler.NewUserHandler(userService)
 	feedbackHandler := handler.NewFeedbackHandler(feedbackService)
 	passwordResetHandler := handler.NewPasswordResetHandler(passwordResetService)
+	adminHandler := handler.NewAdminHandler(userService, teamService)
 
 	e := echo.New()
 	e.Use(middleware.CORS("*"))
@@ -79,10 +82,15 @@ func main() {
 	api.GET("/me/feedbacks", feedbackHandler.GetMyFeedbacks)
 	api.GET("/me/given-feedbacks", feedbackHandler.GetMyGivenFeedbacks)
 	api.POST("/feedbacks", feedbackHandler.CreateFeedback)
+	api.GET("/teams/:teamId/feedbacks", feedbackHandler.GetTeamFeedbacks, custommiddleware.RequireRole("manager"))
+	api.GET("/teams/:teamId/dashboard", feedbackHandler.GetTeamDashboard, custommiddleware.RequireRole("manager"))
+	api.GET("/teams/:teamId/members/:memberId/feedbacks", feedbackHandler.GetMemberFeedbacks, custommiddleware.RequireRole("manager"))
 
 	// Admin routes (ADMIN_SECRET header required)
 	admin := e.Group("/admin", custommiddleware.AdminAuth(adminSecret))
 	admin.POST("/users/:userID/reset-link", passwordResetHandler.GenerateResetLink)
+	admin.PUT("/users/:userID/role", adminHandler.UpdateUserRole)
+	admin.POST("/teams", adminHandler.CreateTeam)
 
 	if err := e.Start(":8080"); err != nil {
 		e.Logger.Error("failed to start server", "error", err)

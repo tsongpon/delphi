@@ -15,6 +15,7 @@ type User struct {
 	Email     string
 	Password  string
 	Title     string
+	Role      string
 	CreatedAt time.Time
 	UpdatedAt time.Time
 	TeamID    string

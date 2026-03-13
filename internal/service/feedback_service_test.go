@@ -13,10 +13,11 @@ import (
 
 // mockFeedbackRepository implements FeedbackRepository for testing.
 type mockFeedbackRepository struct {
-	CreateFeedbackFn           func(ctx context.Context, feedback *model.Feedback) (*model.Feedback, error)
-	GetFeedbackFn              func(ctx context.Context, reviewerID, revieweeID, period string) (*model.Feedback, error)
-	GetFeedbacksByRevieweeIDFn func(ctx context.Context, revieweeID string, limit int, cursor string) ([]*model.Feedback, error)
-	GetFeedbacksByReviewerIDFn func(ctx context.Context, reviewerID string, limit int, cursor string) ([]*model.Feedback, error)
+	CreateFeedbackFn              func(ctx context.Context, feedback *model.Feedback) (*model.Feedback, error)
+	GetFeedbackFn                 func(ctx context.Context, reviewerID, revieweeID, period string) (*model.Feedback, error)
+	GetFeedbacksByRevieweeIDFn    func(ctx context.Context, revieweeID string, limit int, cursor string) ([]*model.Feedback, error)
+	GetFeedbacksByReviewerIDFn    func(ctx context.Context, reviewerID string, limit int, cursor string) ([]*model.Feedback, error)
+	GetFeedbacksByReviewerIDsFn   func(ctx context.Context, reviewerIDs []string) ([]*model.Feedback, error)
 }
 
 func (m *mockFeedbackRepository) CreateFeedback(ctx context.Context, feedback *model.Feedback) (*model.Feedback, error) {
@@ -33,6 +34,13 @@ func (m *mockFeedbackRepository) GetFeedbacksByRevieweeID(ctx context.Context, r
 
 func (m *mockFeedbackRepository) GetFeedbacksByReviewerID(ctx context.Context, reviewerID string, limit int, cursor string) ([]*model.Feedback, error) {
 	return m.GetFeedbacksByReviewerIDFn(ctx, reviewerID, limit, cursor)
+}
+
+func (m *mockFeedbackRepository) GetFeedbacksByReviewerIDs(ctx context.Context, reviewerIDs []string) ([]*model.Feedback, error) {
+	if m.GetFeedbacksByReviewerIDsFn != nil {
+		return m.GetFeedbacksByReviewerIDsFn(ctx, reviewerIDs)
+	}
+	return nil, nil
 }
 
 // validUserRepo returns a mockUserRepository where both reviewer and reviewee exist.

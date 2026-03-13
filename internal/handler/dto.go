@@ -18,6 +18,7 @@ type userResponse struct {
 	Name      string `json:"name"`
 	Email     string `json:"email"`
 	Title     string `json:"title"`
+	Role      string `json:"role"`
 	CreatedAt string `json:"created_at"`
 	UpdatedAt string `json:"updated_at"`
 }
@@ -37,9 +38,14 @@ func toUserResponse(user *model.User) userResponse {
 		Name:      user.Name,
 		Email:     user.Email,
 		Title:     user.Title,
+		Role:      user.Role,
 		CreatedAt: user.CreatedAt.Format(time.RFC3339),
 		UpdatedAt: user.UpdatedAt.Format(time.RFC3339),
 	}
+}
+
+type updateRoleRequest struct {
+	Role string `json:"role"`
 }
 
 type createFeedbackRequest struct {
@@ -85,6 +91,52 @@ type resetPasswordRequest struct {
 type paginatedFeedbackResponse struct {
 	Data       []feedbackResponse `json:"data"`
 	NextCursor string             `json:"next_cursor"`
+}
+
+type memberScores struct {
+	Communication float64 `json:"communication"`
+	Leadership    float64 `json:"leadership"`
+	Technical     float64 `json:"technical"`
+	Collaboration float64 `json:"collaboration"`
+	Delivery      float64 `json:"delivery"`
+}
+
+type memberDashboardEntry struct {
+	ID            string       `json:"id"`
+	Name          string       `json:"name"`
+	Title         string       `json:"title"`
+	Email         string       `json:"email"`
+	AvgScore      float64      `json:"avg_score"`
+	FeedbackCount int          `json:"feedback_count"`
+	Scores        memberScores `json:"scores"`
+}
+
+type teamDashboardResponse struct {
+	TeamMembers      int                    `json:"team_members"`
+	AvgTeamScore     float64                `json:"avg_team_score"`
+	TotalFeedbacks   int                    `json:"total_feedbacks"`
+	FeedbackCoverage int                    `json:"feedback_coverage"`
+	Members          []memberDashboardEntry `json:"members"`
+}
+
+type createTeamRequest struct {
+	Name string `json:"name"`
+}
+
+type teamResponse struct {
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	CreatedAt string `json:"created_at"`
+	UpdatedAt string `json:"updated_at"`
+}
+
+func toTeamResponse(t *model.Team) teamResponse {
+	return teamResponse{
+		ID:        t.ID,
+		Name:      t.Name,
+		CreatedAt: t.CreatedAt.Format(time.RFC3339),
+		UpdatedAt: t.UpdatedAt.Format(time.RFC3339),
+	}
 }
 
 func toFeedbackResponse(f *model.Feedback) feedbackResponse {

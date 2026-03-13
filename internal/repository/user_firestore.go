@@ -26,6 +26,7 @@ type userDocument struct {
 	Email     string    `firestore:"email"`
 	Password  string    `firestore:"password"`
 	Title     string    `firestore:"title"`
+	Role      string    `firestore:"role"`
 	CreatedAt time.Time `firestore:"created_at"`
 	UpdatedAt time.Time `firestore:"updated_at"`
 	TeamID    string    `firestore:"team_id"`
@@ -38,6 +39,7 @@ func toDocument(user *model.User) *userDocument {
 		Email:     user.Email,
 		Password:  user.Password,
 		Title:     user.Title,
+		Role:      user.Role,
 		CreatedAt: user.CreatedAt,
 		UpdatedAt: user.UpdatedAt,
 		TeamID:    user.TeamID,
@@ -51,6 +53,7 @@ func toModel(doc *userDocument) *model.User {
 		Email:     doc.Email,
 		Password:  doc.Password,
 		Title:     doc.Title,
+		Role:      doc.Role,
 		CreatedAt: doc.CreatedAt,
 		UpdatedAt: doc.UpdatedAt,
 		TeamID:    doc.TeamID,
@@ -128,6 +131,18 @@ func (r *UserFirestoreRepository) GetUsersByTeamID(ctx context.Context, teamID s
 	}
 
 	return users, nil
+}
+
+// UpdateRole updates only the role field of a user document.
+func (r *UserFirestoreRepository) UpdateRole(ctx context.Context, userID, role string) error {
+	_, err := r.client.Collection(usersCollection).Doc(userID).Update(ctx, []firestore.Update{
+		{Path: "role", Value: role},
+	})
+	if err != nil {
+		logger.Error("failed to update user role", zap.String("user_id", userID), zap.Error(err))
+		return fmt.Errorf("failed to update role: %w", err)
+	}
+	return nil
 }
 
 // UpdatePassword updates only the password field of a user document.

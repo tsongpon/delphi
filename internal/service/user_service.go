@@ -30,6 +30,7 @@ func NewUserService(repo UserRepository, jwtSecret string) *UserServiceImpl {
 // RegisterUser generates an ID, hashes the password, and persists the user.
 func (s *UserServiceImpl) RegisterUser(ctx context.Context, user *model.User) (*model.User, error) {
 	user.ID = uuid.New().String()
+	user.Role = "member"
 
 	now := time.Now()
 	user.CreatedAt = now
@@ -62,11 +63,13 @@ func (s *UserServiceImpl) LoginUser(ctx context.Context, email, password string)
 
 	now := time.Now()
 	claims := jwt.MapClaims{
-		"sub":   user.ID,
-		"email": user.Email,
-		"name":  user.Name,
-		"iat":   now.Unix(),
-		"exp":   now.Add(24 * time.Hour).Unix(),
+		"sub":     user.ID,
+		"email":   user.Email,
+		"name":    user.Name,
+		"role":    user.Role,
+		"team_id": user.TeamID,
+		"iat":     now.Unix(),
+		"exp":     now.Add(24 * time.Hour).Unix(),
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
@@ -76,6 +79,11 @@ func (s *UserServiceImpl) LoginUser(ctx context.Context, email, password string)
 	}
 
 	return signedToken, nil
+}
+
+// UpdateUserRole updates the role of a user.
+func (s *UserServiceImpl) UpdateUserRole(ctx context.Context, userID, role string) error {
+	return s.repo.UpdateRole(ctx, userID, role)
 }
 
 // GetTeammates returns all users sharing the same team as the given user, excluding the user themselves.
