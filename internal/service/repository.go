@@ -13,6 +13,7 @@ type UserRepository interface {
 	GetUsersByTeamID(ctx context.Context, teamID string) ([]*model.User, error)
 	UpdatePassword(ctx context.Context, userID, hashedPassword string) error
 	UpdateRole(ctx context.Context, userID, role string) error
+	UpdateTeamID(ctx context.Context, userID, teamID string) error
 }
 
 type TokenRepository interface {
@@ -23,6 +24,8 @@ type TokenRepository interface {
 
 type TeamRepository interface {
 	CreateTeam(ctx context.Context, team *model.Team) (*model.Team, error)
+	GetTeamByID(ctx context.Context, teamID string) (*model.Team, error)
+	GetTeamByName(ctx context.Context, name string) (*model.Team, error)
 }
 
 type FeedbackRepository interface {
@@ -31,4 +34,12 @@ type FeedbackRepository interface {
 	GetFeedbacksByRevieweeID(ctx context.Context, revieweeID string, limit int, cursor string) ([]*model.Feedback, error)
 	GetFeedbacksByReviewerID(ctx context.Context, reviewerID string, limit int, cursor string) ([]*model.Feedback, error)
 	GetFeedbacksByReviewerIDs(ctx context.Context, reviewerIDs []string) ([]*model.Feedback, error)
+}
+
+type InviteLinkRepository interface {
+	CreateInviteLink(ctx context.Context, link *model.InviteLink) (*model.InviteLink, error)
+	GetByID(ctx context.Context, id string) (*model.InviteLink, error)
+	GetByTeamID(ctx context.Context, teamID string) ([]*model.InviteLink, error)
+	DeleteInviteLink(ctx context.Context, id string) error
+	IncrementUsedCount(ctx context.Context, id string) error
 }

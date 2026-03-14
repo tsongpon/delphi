@@ -8,7 +8,6 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/assert"
@@ -21,18 +20,13 @@ import (
 // ---------------------------------------------------------------------------
 
 func TestAuthHandler_RegisterUser_Success(t *testing.T) {
-	now := time.Now()
-
 	mockSvc := &mockUserService{
-		RegisterUserFn: func(_ context.Context, user *model.User) (*model.User, error) {
-			user.ID = "generated-uuid"
-			user.CreatedAt = now
-			user.UpdatedAt = now
-			return user, nil
+		RegisterUserFn: func(_ context.Context, user *model.User) (string, error) {
+			return "jwt-token", nil
 		},
 	}
 
-	h := NewAuthHandler(mockSvc)
+	h := NewAuthHandler(mockSvc, &mockInviteLinkService{})
 
 	body := `{"name":"Alice","email":"alice@example.com","password":"secret123","title":"Engineer"}`
 	e := echo.New()
@@ -46,24 +40,17 @@ func TestAuthHandler_RegisterUser_Success(t *testing.T) {
 
 	assert.Equal(t, http.StatusCreated, rec.Code)
 
-	var resp userResponse
+	var resp loginResponse
 	err = json.Unmarshal(rec.Body.Bytes(), &resp)
 	require.NoError(t, err)
 
-	assert.Equal(t, "generated-uuid", resp.ID)
-	assert.Equal(t, "Alice", resp.Name)
-	assert.Equal(t, "alice@example.com", resp.Email)
-	assert.Equal(t, "Engineer", resp.Title)
-	assert.NotEmpty(t, resp.CreatedAt)
-	assert.NotEmpty(t, resp.UpdatedAt)
-
+	assert.Equal(t, "jwt-token", resp.Token)
 	// Password must NOT appear in the response
 	assert.NotContains(t, rec.Body.String(), "secret123")
 }
 
 func TestAuthHandler_RegisterUser_InvalidBody(t *testing.T) {
-	mockSvc := &mockUserService{}
-	h := NewAuthHandler(mockSvc)
+	h := NewAuthHandler(&mockUserService{}, &mockInviteLinkService{})
 
 	e := echo.New()
 	req := httptest.NewRequest(http.MethodPost, "/register", strings.NewReader("not-json"))
@@ -80,12 +67,12 @@ func TestAuthHandler_RegisterUser_InvalidBody(t *testing.T) {
 
 func TestAuthHandler_RegisterUser_ServiceError(t *testing.T) {
 	mockSvc := &mockUserService{
-		RegisterUserFn: func(_ context.Context, _ *model.User) (*model.User, error) {
-			return nil, fmt.Errorf("db error")
+		RegisterUserFn: func(_ context.Context, _ *model.User) (string, error) {
+			return "", fmt.Errorf("db error")
 		},
 	}
 
-	h := NewAuthHandler(mockSvc)
+	h := NewAuthHandler(mockSvc, &mockInviteLinkService{})
 
 	body := `{"name":"Alice","email":"alice@example.com","password":"secret123","title":"Engineer"}`
 	e := echo.New()
@@ -112,7 +99,7 @@ func TestAuthHandler_LoginUser_Success(t *testing.T) {
 		},
 	}
 
-	h := NewAuthHandler(mockSvc)
+	h := NewAuthHandler(mockSvc, &mockInviteLinkService{})
 
 	body := `{"email":"alice@example.com","password":"secret123"}`
 	e := echo.New()
@@ -134,8 +121,7 @@ func TestAuthHandler_LoginUser_Success(t *testing.T) {
 }
 
 func TestAuthHandler_LoginUser_InvalidBody(t *testing.T) {
-	mockSvc := &mockUserService{}
-	h := NewAuthHandler(mockSvc)
+	h := NewAuthHandler(&mockUserService{}, &mockInviteLinkService{})
 
 	e := echo.New()
 	req := httptest.NewRequest(http.MethodPost, "/login", strings.NewReader("not-json"))
@@ -157,7 +143,7 @@ func TestAuthHandler_LoginUser_InvalidCredentials(t *testing.T) {
 		},
 	}
 
-	h := NewAuthHandler(mockSvc)
+	h := NewAuthHandler(mockSvc, &mockInviteLinkService{})
 
 	body := `{"email":"alice@example.com","password":"wrong"}`
 	e := echo.New()

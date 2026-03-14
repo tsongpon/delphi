@@ -53,17 +53,20 @@ func main() {
 	feedbackRepo := repository.NewFeedbackFirestoreRepository(firestoreClient)
 	tokenRepo := repository.NewTokenFirestoreRepository(firestoreClient)
 	teamRepo := repository.NewTeamFirestoreRepository(firestoreClient)
+	inviteLinkRepo := repository.NewInviteLinkFirestoreRepository(firestoreClient)
 
-	userService := service.NewUserService(userRepo, jwtSecret)
+	userService := service.NewUserService(userRepo, teamRepo, jwtSecret)
 	feedbackService := service.NewFeedbackService(feedbackRepo, userRepo)
 	passwordResetService := service.NewPasswordResetService(tokenRepo, userRepo, appBaseURL)
 	teamService := service.NewTeamService(teamRepo)
+	inviteLinkService := service.NewInviteLinkService(inviteLinkRepo, teamRepo, jwtSecret, appBaseURL)
 
-	authHandler := handler.NewAuthHandler(userService)
+	authHandler := handler.NewAuthHandler(userService, inviteLinkService)
 	userHandler := handler.NewUserHandler(userService)
 	feedbackHandler := handler.NewFeedbackHandler(feedbackService)
 	passwordResetHandler := handler.NewPasswordResetHandler(passwordResetService)
 	adminHandler := handler.NewAdminHandler(userService, teamService)
+	inviteLinkHandler := handler.NewInviteLinkHandler(inviteLinkService)
 
 	e := echo.New()
 	e.Use(middleware.CORS("*"))
@@ -75,6 +78,7 @@ func main() {
 	e.POST("/register", authHandler.RegisterUser)
 	e.POST("/login", authHandler.LoginUser)
 	e.POST("/reset-password", passwordResetHandler.ResetPassword)
+	e.GET("/invite-links/validate", inviteLinkHandler.ValidateInviteToken)
 
 	// Protected routes (JWT required)
 	api := e.Group("", custommiddleware.JWTAuth(jwtSecret))
@@ -85,6 +89,9 @@ func main() {
 	api.GET("/teams/:teamId/feedbacks", feedbackHandler.GetTeamFeedbacks, custommiddleware.RequireRole("manager"))
 	api.GET("/teams/:teamId/dashboard", feedbackHandler.GetTeamDashboard, custommiddleware.RequireRole("manager"))
 	api.GET("/teams/:teamId/members/:memberId/feedbacks", feedbackHandler.GetMemberFeedbacks, custommiddleware.RequireRole("manager"))
+	api.POST("/teams/:teamId/invite-links", inviteLinkHandler.CreateInviteLink, custommiddleware.RequireRole("manager"))
+	api.GET("/teams/:teamId/invite-links", inviteLinkHandler.ListInviteLinks, custommiddleware.RequireRole("manager"))
+	api.DELETE("/teams/:teamId/invite-links/:linkId", inviteLinkHandler.RevokeInviteLink, custommiddleware.RequireRole("manager"))
 
 	// Admin routes (ADMIN_SECRET header required)
 	admin := e.Group("/admin", custommiddleware.AdminAuth(adminSecret))

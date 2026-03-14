@@ -7,10 +7,12 @@ import (
 )
 
 type registerUserRequest struct {
-	Name     string `json:"name"`
-	Email    string `json:"email"`
-	Password string `json:"password"`
-	Title    string `json:"title"`
+	Name        string `json:"name"`
+	Email       string `json:"email"`
+	Password    string `json:"password"`
+	Title       string `json:"title"`
+	TeamName    string `json:"team_name"`
+	InviteToken string `json:"invite_token"`
 }
 
 type userResponse struct {
@@ -121,6 +123,31 @@ type teamDashboardResponse struct {
 
 type createTeamRequest struct {
 	Name string `json:"name"`
+}
+
+type createInviteLinkRequest struct {
+	ExpiresInDays int `json:"expires_in_days"`
+}
+
+type inviteLinkResponse struct {
+	ID          string `json:"id"`
+	InviteLink  string `json:"invite_link"`
+	ExpiresAt   string `json:"expires_at"`
+	CreatedAt   string `json:"created_at"`
+	UsedCount   int    `json:"used_count"`
+}
+
+type listInviteLinksResponse struct {
+	InviteLinks []inviteLinkResponse `json:"invite_links"`
+}
+
+type validateTokenResponse struct {
+	Valid     bool   `json:"valid"`
+	TeamID    string `json:"team_id,omitempty"`
+	TeamName  string `json:"team_name,omitempty"`
+	Role      string `json:"role,omitempty"`
+	ExpiresAt string `json:"expires_at,omitempty"`
+	Reason    string `json:"reason,omitempty"`
 }
 
 type teamResponse struct {

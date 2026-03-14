@@ -22,6 +22,7 @@ type mockUserRepository struct {
 	GetUsersByTeamIDFn func(ctx context.Context, teamID string) ([]*model.User, error)
 	UpdatePasswordFn   func(ctx context.Context, userID, hashedPassword string) error
 	UpdateRoleFn       func(ctx context.Context, userID, role string) error
+	UpdateTeamIDFn     func(ctx context.Context, userID, teamID string) error
 }
 
 func (m *mockUserRepository) CreateUser(ctx context.Context, user *model.User) (*model.User, error) {
@@ -29,7 +30,10 @@ func (m *mockUserRepository) CreateUser(ctx context.Context, user *model.User) (
 }
 
 func (m *mockUserRepository) GetUserByEmail(ctx context.Context, email string) (*model.User, error) {
-	return m.GetUserByEmailFn(ctx, email)
+	if m.GetUserByEmailFn != nil {
+		return m.GetUserByEmailFn(ctx, email)
+	}
+	return nil, fmt.Errorf("not found")
 }
 
 func (m *mockUserRepository) GetUserByID(ctx context.Context, id string) (*model.User, error) {
@@ -54,6 +58,45 @@ func (m *mockUserRepository) UpdateRole(ctx context.Context, userID, role string
 	return nil
 }
 
+func (m *mockUserRepository) UpdateTeamID(ctx context.Context, userID, teamID string) error {
+	if m.UpdateTeamIDFn != nil {
+		return m.UpdateTeamIDFn(ctx, userID, teamID)
+	}
+	return nil
+}
+
+// mockTeamRepository implements TeamRepository for testing.
+type mockTeamRepository struct {
+	CreateTeamFn    func(ctx context.Context, team *model.Team) (*model.Team, error)
+	GetTeamByIDFn   func(ctx context.Context, teamID string) (*model.Team, error)
+	GetTeamByNameFn func(ctx context.Context, name string) (*model.Team, error)
+}
+
+func (m *mockTeamRepository) CreateTeam(ctx context.Context, team *model.Team) (*model.Team, error) {
+	if m.CreateTeamFn != nil {
+		return m.CreateTeamFn(ctx, team)
+	}
+	return team, nil
+}
+
+func (m *mockTeamRepository) GetTeamByID(ctx context.Context, teamID string) (*model.Team, error) {
+	if m.GetTeamByIDFn != nil {
+		return m.GetTeamByIDFn(ctx, teamID)
+	}
+	return nil, nil
+}
+
+func (m *mockTeamRepository) GetTeamByName(ctx context.Context, name string) (*model.Team, error) {
+	if m.GetTeamByNameFn != nil {
+		return m.GetTeamByNameFn(ctx, name)
+	}
+	return nil, nil
+}
+
+func newTestUserService(repo UserRepository) *UserServiceImpl {
+	return NewUserService(repo, &mockTeamRepository{}, "test-secret")
+}
+
 // ---------------------------------------------------------------------------
 // RegisterUser tests
 // ---------------------------------------------------------------------------
@@ -68,7 +111,7 @@ func TestRegisterUser_Success(t *testing.T) {
 		},
 	}
 
-	svc := NewUserService(repo, "test-secret")
+	svc := newTestUserService(repo)
 
 	user := &model.User{
 		Name:     "Alice",
@@ -77,22 +120,19 @@ func TestRegisterUser_Success(t *testing.T) {
 		Title:    "Engineer",
 	}
 
-	result, err := svc.RegisterUser(context.Background(), user)
+	token, err := svc.RegisterUser(context.Background(), user)
 	require.NoError(t, err)
-	require.NotNil(t, result)
+	assert.NotEmpty(t, token)
 
 	// UUID was generated
-	assert.NotEmpty(t, result.ID)
+	assert.NotEmpty(t, captured.ID)
 
 	// Timestamps were set
-	assert.False(t, result.CreatedAt.IsZero())
-	assert.False(t, result.UpdatedAt.IsZero())
+	assert.False(t, captured.CreatedAt.IsZero())
+	assert.False(t, captured.UpdatedAt.IsZero())
 
 	// Password was hashed (not plaintext)
 	assert.NotEqual(t, "plaintext123", captured.Password)
-
-	// Repo received the same user object
-	assert.Equal(t, result.ID, captured.ID)
 }
 
 func TestRegisterUser_PasswordIsHashed(t *testing.T) {
@@ -105,7 +145,7 @@ func TestRegisterUser_PasswordIsHashed(t *testing.T) {
 		},
 	}
 
-	svc := NewUserService(repo, "test-secret")
+	svc := newTestUserService(repo)
 
 	user := &model.User{
 		Name:     "Bob",
@@ -132,7 +172,7 @@ func TestRegisterUser_RepoError(t *testing.T) {
 		},
 	}
 
-	svc := NewUserService(repo, "test-secret")
+	svc := newTestUserService(repo)
 
 	user := &model.User{
 		Name:     "Charlie",
@@ -141,9 +181,9 @@ func TestRegisterUser_RepoError(t *testing.T) {
 		Title:    "QA",
 	}
 
-	result, err := svc.RegisterUser(context.Background(), user)
+	token, err := svc.RegisterUser(context.Background(), user)
 	assert.Error(t, err)
-	assert.Nil(t, result)
+	assert.Empty(t, token)
 	assert.ErrorContains(t, err, "failed to create user")
 }
 
@@ -168,7 +208,7 @@ func TestLoginUser_Success(t *testing.T) {
 	}
 
 	secret := "test-jwt-secret"
-	svc := NewUserService(repo, secret)
+	svc := NewUserService(repo, &mockTeamRepository{}, secret)
 
 	token, err := svc.LoginUser(context.Background(), "alice@example.com", "correct-password")
 	require.NoError(t, err)
@@ -207,7 +247,7 @@ func TestLoginUser_UserNotFound(t *testing.T) {
 		},
 	}
 
-	svc := NewUserService(repo, "test-secret")
+	svc := newTestUserService(repo)
 
 	token, err := svc.LoginUser(context.Background(), "nobody@example.com", "password")
 	assert.Error(t, err)
@@ -230,7 +270,7 @@ func TestLoginUser_WrongPassword(t *testing.T) {
 		},
 	}
 
-	svc := NewUserService(repo, "test-secret")
+	svc := newTestUserService(repo)
 
 	token, err := svc.LoginUser(context.Background(), "alice@example.com", "wrong-password")
 	assert.Error(t, err)
@@ -256,7 +296,7 @@ func TestGetTeammates_Success(t *testing.T) {
 		},
 	}
 
-	svc := NewUserService(repo, "test-secret")
+	svc := newTestUserService(repo)
 
 	result, err := svc.GetTeammates(context.Background(), "user-1")
 	require.NoError(t, err)
@@ -279,7 +319,7 @@ func TestGetTeammates_NoTeam(t *testing.T) {
 		},
 	}
 
-	svc := NewUserService(repo, "test-secret")
+	svc := newTestUserService(repo)
 
 	result, err := svc.GetTeammates(context.Background(), "user-1")
 	require.NoError(t, err)
@@ -294,7 +334,7 @@ func TestGetTeammates_UserNotFound(t *testing.T) {
 		},
 	}
 
-	svc := NewUserService(repo, "test-secret")
+	svc := newTestUserService(repo)
 
 	result, err := svc.GetTeammates(context.Background(), "nonexistent")
 	assert.Error(t, err)
@@ -312,7 +352,7 @@ func TestGetTeammates_RepoError(t *testing.T) {
 		},
 	}
 
-	svc := NewUserService(repo, "test-secret")
+	svc := newTestUserService(repo)
 
 	result, err := svc.GetTeammates(context.Background(), "user-1")
 	assert.Error(t, err)
@@ -332,7 +372,7 @@ func TestGetTeammates_OnlyUserOnTeam(t *testing.T) {
 		},
 	}
 
-	svc := NewUserService(repo, "test-secret")
+	svc := newTestUserService(repo)
 
 	result, err := svc.GetTeammates(context.Background(), "user-1")
 	require.NoError(t, err)
