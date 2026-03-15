@@ -2,12 +2,17 @@ package service
 
 import (
 	"context"
+	"crypto/sha256"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
+	"github.com/tsongpon/delphi/internal/apperr"
+	"github.com/tsongpon/delphi/internal/logger"
 	"github.com/tsongpon/delphi/internal/model"
+	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -49,7 +54,7 @@ func (s *UserServiceImpl) generateToken(user *model.User) (string, error) {
 
 // RegisterUser creates a member with no team assignment (legacy / no-invite path) and returns a JWT.
 func (s *UserServiceImpl) RegisterUser(ctx context.Context, user *model.User) (string, error) {
-	user.ID = uuid.New().String()
+	user.ID = hashEmail(user.Email)
 	user.Role = "member"
 
 	now := time.Now()
@@ -64,6 +69,10 @@ func (s *UserServiceImpl) RegisterUser(ctx context.Context, user *model.User) (s
 
 	createdUser, err := s.repo.CreateUser(ctx, user)
 	if err != nil {
+		if e, ok := err.(*apperr.DuplicateResourceError); ok {
+			logger.Error("failed to create user, duplicate resource", zap.Error(e))
+			return "", err
+		}
 		return "", fmt.Errorf("failed to create user: %w", err)
 	}
 
@@ -77,32 +86,14 @@ func (s *UserServiceImpl) RegisterUser(ctx context.Context, user *model.User) (s
 // RegisterManager creates a new team and a manager user, then returns a JWT.
 // Returns ErrTeamNameTaken if a team with that name already exists.
 func (s *UserServiceImpl) RegisterManager(ctx context.Context, user *model.User, teamName string) (string, error) {
-	existing, err := s.teamRepo.GetTeamByName(ctx, teamName)
-	if err != nil {
-		return "", fmt.Errorf("failed to check team name: %w", err)
-	}
-	if existing != nil {
-		return "", ErrTeamNameTaken
-	}
-
 	now := time.Now()
-	userID := uuid.New().String()
+	userID := hashEmail(user.Email)
 
-	team := &model.Team{
-		ID:        uuid.New().String(),
-		Name:      teamName,
-		CreatedBy: userID,
-		CreatedAt: now,
-		UpdatedAt: now,
-	}
-	createdTeam, err := s.teamRepo.CreateTeam(ctx, team)
-	if err != nil {
-		return "", fmt.Errorf("failed to create team: %w", err)
-	}
+	teamID := uuid.New().String()
 
 	user.ID = userID
 	user.Role = "manager"
-	user.TeamID = createdTeam.ID
+	user.TeamID = teamID
 	user.CreatedAt = now
 	user.UpdatedAt = now
 
@@ -114,7 +105,28 @@ func (s *UserServiceImpl) RegisterManager(ctx context.Context, user *model.User,
 
 	createdUser, err := s.repo.CreateUser(ctx, user)
 	if err != nil {
+		if e, ok := err.(*apperr.DuplicateResourceError); ok {
+			logger.Error("failed to create user, duplicate resource", zap.Error(e))
+			return "", err
+		}
 		return "", fmt.Errorf("failed to create user: %w", err)
+	}
+
+	team := &model.Team{
+		ID:        teamID,
+		Name:      teamName,
+		CreatedBy: userID,
+		CreatedAt: now,
+		UpdatedAt: now,
+	}
+	_, err = s.teamRepo.CreateTeam(ctx, team)
+	if err != nil {
+		logger.Error("failed to create team", zap.Error(err))
+		err := s.repo.DeleteUser(ctx, user.ID)
+		if err != nil {
+			logger.Error("failed to delete user", zap.Error(err))
+		}
+		return "", fmt.Errorf("failed to create team: %w", err)
 	}
 
 	token, err := s.generateToken(createdUser)
@@ -147,7 +159,7 @@ func (s *UserServiceImpl) RegisterMember(ctx context.Context, user *model.User, 
 
 	// New user
 	now := time.Now()
-	user.ID = uuid.New().String()
+	user.ID = hashEmail(user.Email)
 	user.Role = role
 	user.TeamID = teamID
 	user.CreatedAt = now
@@ -161,6 +173,10 @@ func (s *UserServiceImpl) RegisterMember(ctx context.Context, user *model.User, 
 
 	createdUser, err := s.repo.CreateUser(ctx, user)
 	if err != nil {
+		if e, ok := err.(*apperr.DuplicateResourceError); ok {
+			logger.Error("failed to create user, duplicate resource", zap.Error(e))
+			return "", err
+		}
 		return "", fmt.Errorf("failed to create user: %w", err)
 	}
 
@@ -219,4 +235,9 @@ func (s *UserServiceImpl) GetTeammates(ctx context.Context, userID string) ([]*m
 	}
 
 	return result, nil
+}
+
+func hashEmail(email string) string {
+	h := sha256.Sum256([]byte(strings.ToLower(strings.TrimSpace(email))))
+	return fmt.Sprintf("%x", h)
 }

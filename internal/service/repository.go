@@ -14,6 +14,7 @@ type UserRepository interface {
 	UpdatePassword(ctx context.Context, userID, hashedPassword string) error
 	UpdateRole(ctx context.Context, userID, role string) error
 	UpdateTeamID(ctx context.Context, userID, teamID string) error
+	DeleteUser(ctx context.Context, userID string) error
 }
 
 type TokenRepository interface {

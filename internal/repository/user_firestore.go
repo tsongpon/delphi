@@ -6,11 +6,14 @@ import (
 	"time"
 
 	"cloud.google.com/go/firestore"
+	"github.com/tsongpon/delphi/internal/apperr"
 	"github.com/tsongpon/delphi/internal/logger"
 	"github.com/tsongpon/delphi/internal/model"
 	"github.com/tsongpon/delphi/internal/service"
 	"go.uber.org/zap"
 	"google.golang.org/api/iterator"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 const usersCollection = "users"
@@ -79,9 +82,12 @@ func (r *UserFirestoreRepository) CreateUser(ctx context.Context, user *model.Us
 
 	doc := toDocument(user)
 
-	docRef := r.client.Collection(usersCollection).Doc(doc.ID)
-	_, err := docRef.Set(ctx, doc)
+	_, err := r.client.Collection(usersCollection).Doc(doc.ID).Create(ctx, doc)
 	if err != nil {
+		if status.Code(err) == codes.AlreadyExists {
+			logger.Error("duplicate user", zap.Error(err))
+			return nil, apperr.NewDuplicateResourceError("user already exists")
+		}
 		logger.Error("failed to create user in firestore", zap.Error(err))
 		return nil, fmt.Errorf("failed to create user in firestore: %w", err)
 	}
@@ -165,6 +171,16 @@ func (r *UserFirestoreRepository) UpdateTeamID(ctx context.Context, userID, team
 	if err != nil {
 		logger.Error("failed to update user team_id", zap.String("user_id", userID), zap.Error(err))
 		return fmt.Errorf("failed to update team_id: %w", err)
+	}
+	return nil
+}
+
+// DeleteUser deletes a user document from the Firestore "users" collection.
+func (r *UserFirestoreRepository) DeleteUser(ctx context.Context, userID string) error {
+	_, err := r.client.Collection(usersCollection).Doc(userID).Delete(ctx)
+	if err != nil {
+		logger.Error("failed to delete user", zap.String("user_id", userID), zap.Error(err))
+		return fmt.Errorf("failed to delete user: %w", err)
 	}
 	return nil
 }

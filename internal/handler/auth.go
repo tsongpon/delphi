@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/labstack/echo/v5"
+	"github.com/tsongpon/delphi/internal/apperr"
 	"github.com/tsongpon/delphi/internal/logger"
 	"github.com/tsongpon/delphi/internal/model"
 	"github.com/tsongpon/delphi/internal/service"
@@ -48,11 +49,14 @@ func (h *AuthHandler) RegisterUser(c *echo.Context) error {
 			Password: req.Password,
 			Title:    req.Title,
 		}
-		logger.Info("Registering member", zap.String("email", user.Email), zap.String("name", user.Name), zap.String("title", req.Title), zap.String("team_id", link.TeamID))
 		token, err := h.UserService.RegisterMember(ctx, user, link.TeamID, link.Role)
 		if err != nil {
 			if errors.Is(err, service.ErrEmailBelongsToDifferentTeam) {
 				return c.JSON(http.StatusConflict, map[string]string{"error": "email already belongs to a different team"})
+			}
+			if e, ok := err.(*apperr.DuplicateResourceError); ok {
+				logger.Error("failed to register user, duplicate resource", zap.Error(e))
+				return c.JSON(http.StatusConflict, map[string]string{"error": "email already belongs to a different user"})
 			}
 			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to register user"})
 		}
@@ -73,6 +77,10 @@ func (h *AuthHandler) RegisterUser(c *echo.Context) error {
 		if err != nil {
 			if errors.Is(err, service.ErrTeamNameTaken) {
 				return c.JSON(http.StatusConflict, map[string]string{"error": "team name already taken"})
+			}
+			if e, ok := err.(*apperr.DuplicateResourceError); ok {
+				logger.Error("failed to register user, duplicate resource", zap.Error(e))
+				return c.JSON(http.StatusConflict, map[string]string{"error": "email already belongs to a different user"})
 			}
 			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to register user"})
 		}

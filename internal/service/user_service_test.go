@@ -23,6 +23,7 @@ type mockUserRepository struct {
 	UpdatePasswordFn   func(ctx context.Context, userID, hashedPassword string) error
 	UpdateRoleFn       func(ctx context.Context, userID, role string) error
 	UpdateTeamIDFn     func(ctx context.Context, userID, teamID string) error
+	DeleteUserFn       func(ctx context.Context, userID string) error
 }
 
 func (m *mockUserRepository) CreateUser(ctx context.Context, user *model.User) (*model.User, error) {
@@ -61,6 +62,13 @@ func (m *mockUserRepository) UpdateRole(ctx context.Context, userID, role string
 func (m *mockUserRepository) UpdateTeamID(ctx context.Context, userID, teamID string) error {
 	if m.UpdateTeamIDFn != nil {
 		return m.UpdateTeamIDFn(ctx, userID, teamID)
+	}
+	return nil
+}
+
+func (m *mockUserRepository) DeleteUser(ctx context.Context, userID string) error {
+	if m.DeleteUserFn != nil {
+		return m.DeleteUserFn(ctx, userID)
 	}
 	return nil
 }
