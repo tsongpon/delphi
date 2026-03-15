@@ -67,7 +67,7 @@ type feedbackResponse struct {
 	ID                 string `json:"id"`
 	Period             string `json:"period"`
 	RevieweeID         string `json:"reviewee_id"`
-	ReviewerID         string `json:"reviewer_id"`
+	ReviewerID         string `json:"reviewer_id,omitempty"`
 	CommunicationScore int    `json:"communication_score"`
 	LeadershipScore    int    `json:"leadership_score"`
 	TechnicalScore     int    `json:"technical_score"`
@@ -130,11 +130,11 @@ type createInviteLinkRequest struct {
 }
 
 type inviteLinkResponse struct {
-	ID          string `json:"id"`
-	InviteLink  string `json:"invite_link"`
-	ExpiresAt   string `json:"expires_at"`
-	CreatedAt   string `json:"created_at"`
-	UsedCount   int    `json:"used_count"`
+	ID         string `json:"id"`
+	InviteLink string `json:"invite_link"`
+	ExpiresAt  string `json:"expires_at"`
+	CreatedAt  string `json:"created_at"`
+	UsedCount  int    `json:"used_count"`
 }
 
 type listInviteLinksResponse struct {

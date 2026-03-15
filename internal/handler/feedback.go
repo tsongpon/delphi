@@ -101,7 +101,11 @@ func (h *FeedbackHandler) GetMyFeedbacks(c *echo.Context) error {
 
 	data := make([]feedbackResponse, 0, len(feedbacks))
 	for _, f := range feedbacks {
-		data = append(data, toFeedbackResponse(f))
+		res := toFeedbackResponse(f)
+		if res.Visibility == "anonymous" {
+			res.ReviewerID = "" // blind reviewer ID
+		}
+		data = append(data, res)
 	}
 
 	return c.JSON(http.StatusOK, paginatedFeedbackResponse{Data: data, NextCursor: nextCursor})
