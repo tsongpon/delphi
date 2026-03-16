@@ -24,6 +24,7 @@ type FeedbackService interface {
 	GetTeamFeedbacks(ctx context.Context, teamID string) ([]*model.Feedback, error)
 	GetTeamDashboard(ctx context.Context, teamID string) (*service.TeamDashboard, error)
 	GetFeedbacksForMember(ctx context.Context, teamID, memberID string, limit int, cursor string) ([]*model.Feedback, error)
+	ExportFeedbacksForUser(ctx context.Context, userID string) ([]*service.FeedbackExportEntry, error)
 }
 
 type TeamService interface {

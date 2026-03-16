@@ -227,6 +227,52 @@ func (s *FeedbackServiceImpl) GetTeamDashboard(ctx context.Context, teamID strin
 	}, nil
 }
 
+// FeedbackExportEntry wraps a Feedback with the resolved reviewer display name.
+// ReviewerName is empty for anonymous feedback.
+type FeedbackExportEntry struct {
+	Feedback     *model.Feedback
+	ReviewerName string
+}
+
+// ExportFeedbacksForUser returns all feedbacks received by the user in the past 12 months,
+// with reviewer names resolved for named (non-anonymous) entries.
+func (s *FeedbackServiceImpl) ExportFeedbacksForUser(ctx context.Context, userID string) ([]*FeedbackExportEntry, error) {
+	feedbacks, err := s.repo.GetFeedbacksByRevieweeID(ctx, userID, 1000, "")
+	if err != nil {
+		return nil, fmt.Errorf("failed to get feedbacks for export: %w", err)
+	}
+	cutoff := time.Now().AddDate(-1, 0, 0)
+
+	// Collect unique reviewer IDs for named feedbacks to batch-resolve names.
+	reviewerIDs := make(map[string]struct{})
+	var filtered []*model.Feedback
+	for _, f := range feedbacks {
+		if f.CreatedAt.After(cutoff) {
+			filtered = append(filtered, f)
+			if f.Visibility == "named" {
+				reviewerIDs[f.ReviewerID] = struct{}{}
+			}
+		}
+	}
+
+	nameByID := make(map[string]string, len(reviewerIDs))
+	for id := range reviewerIDs {
+		if u, err := s.userRepo.GetUserByID(ctx, id); err == nil {
+			nameByID[id] = u.Name
+		}
+	}
+
+	result := make([]*FeedbackExportEntry, 0, len(filtered))
+	for _, f := range filtered {
+		entry := &FeedbackExportEntry{Feedback: f}
+		if f.Visibility == "named" {
+			entry.ReviewerName = nameByID[f.ReviewerID]
+		}
+		result = append(result, entry)
+	}
+	return result, nil
+}
+
 // GetFeedbacksForMember returns paginated feedbacks for a specific member, verifying they belong to the team.
 func (s *FeedbackServiceImpl) GetFeedbacksForMember(ctx context.Context, teamID, memberID string, limit int, cursor string) ([]*model.Feedback, error) {
 	member, err := s.userRepo.GetUserByID(ctx, memberID)

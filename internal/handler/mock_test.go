@@ -99,12 +99,13 @@ func (m *mockInviteLinkService) IncrementUsedCount(ctx context.Context, id strin
 
 // mockFeedbackService implements FeedbackService for handler tests.
 type mockFeedbackService struct {
-	CreateFeedbackFn           func(ctx context.Context, feedback *model.Feedback) (*model.Feedback, error)
-	GetFeedbacksForUserFn      func(ctx context.Context, userID string, limit int, cursor string) ([]*model.Feedback, error)
-	GetGivenFeedbacksForUserFn func(ctx context.Context, userID string, limit int, cursor string) ([]*model.Feedback, error)
-	GetTeamFeedbacksFn         func(ctx context.Context, teamID string) ([]*model.Feedback, error)
-	GetTeamDashboardFn         func(ctx context.Context, teamID string) (*service.TeamDashboard, error)
-	GetFeedbacksForMemberFn    func(ctx context.Context, teamID, memberID string, limit int, cursor string) ([]*model.Feedback, error)
+	CreateFeedbackFn            func(ctx context.Context, feedback *model.Feedback) (*model.Feedback, error)
+	GetFeedbacksForUserFn       func(ctx context.Context, userID string, limit int, cursor string) ([]*model.Feedback, error)
+	GetGivenFeedbacksForUserFn  func(ctx context.Context, userID string, limit int, cursor string) ([]*model.Feedback, error)
+	GetTeamFeedbacksFn          func(ctx context.Context, teamID string) ([]*model.Feedback, error)
+	GetTeamDashboardFn          func(ctx context.Context, teamID string) (*service.TeamDashboard, error)
+	GetFeedbacksForMemberFn     func(ctx context.Context, teamID, memberID string, limit int, cursor string) ([]*model.Feedback, error)
+	ExportFeedbacksForUserFn    func(ctx context.Context, userID string) ([]*service.FeedbackExportEntry, error)
 }
 
 func (m *mockFeedbackService) CreateFeedback(ctx context.Context, feedback *model.Feedback) (*model.Feedback, error) {
@@ -136,6 +137,13 @@ func (m *mockFeedbackService) GetTeamDashboard(ctx context.Context, teamID strin
 func (m *mockFeedbackService) GetFeedbacksForMember(ctx context.Context, teamID, memberID string, limit int, cursor string) ([]*model.Feedback, error) {
 	if m.GetFeedbacksForMemberFn != nil {
 		return m.GetFeedbacksForMemberFn(ctx, teamID, memberID, limit, cursor)
+	}
+	return nil, nil
+}
+
+func (m *mockFeedbackService) ExportFeedbacksForUser(ctx context.Context, userID string) ([]*service.FeedbackExportEntry, error) {
+	if m.ExportFeedbacksForUserFn != nil {
+		return m.ExportFeedbacksForUserFn(ctx, userID)
 	}
 	return nil, nil
 }

@@ -336,3 +336,379 @@ func TestCreateFeedback_CreateRepoError(t *testing.T) {
 	assert.Nil(t, result)
 	assert.ErrorContains(t, err, "failed to create feedback")
 }
+
+// ---------------------------------------------------------------------------
+// GetTeamFeedbacks tests
+// ---------------------------------------------------------------------------
+
+func TestGetTeamFeedbacks_Success(t *testing.T) {
+	now := time.Now()
+	members := []*model.User{
+		{ID: "member-1", TeamID: "team-1"},
+		{ID: "member-2", TeamID: "team-1"},
+	}
+
+	repo := &mockFeedbackRepository{
+		GetFeedbacksByReviewerIDsFn: func(_ context.Context, reviewerIDs []string) ([]*model.Feedback, error) {
+			return []*model.Feedback{
+				{ID: "fb-1", ReviewerID: "member-1", RevieweeID: "member-2", Period: "1-2026", CreatedAt: now},
+				{ID: "fb-2", ReviewerID: "member-2", RevieweeID: "member-1", Period: "1-2026", CreatedAt: now},
+				// External reviewer (not in team) - should be filtered out
+				{ID: "fb-3", ReviewerID: "member-1", RevieweeID: "external-user", Period: "1-2026", CreatedAt: now},
+			}, nil
+		},
+	}
+
+	userRepo := &mockUserRepository{
+		GetUsersByTeamIDFn: func(_ context.Context, teamID string) ([]*model.User, error) {
+			assert.Equal(t, "team-1", teamID)
+			return members, nil
+		},
+	}
+
+	svc := NewFeedbackService(repo, userRepo)
+	result, err := svc.GetTeamFeedbacks(context.Background(), "team-1")
+	require.NoError(t, err)
+	assert.Len(t, result, 2)
+	assert.Equal(t, "fb-1", result[0].ID)
+	assert.Equal(t, "fb-2", result[1].ID)
+}
+
+func TestGetTeamFeedbacks_EmptyTeam(t *testing.T) {
+	repo := &mockFeedbackRepository{}
+	userRepo := &mockUserRepository{
+		GetUsersByTeamIDFn: func(_ context.Context, _ string) ([]*model.User, error) {
+			return []*model.User{}, nil
+		},
+	}
+
+	svc := NewFeedbackService(repo, userRepo)
+	result, err := svc.GetTeamFeedbacks(context.Background(), "team-1")
+	require.NoError(t, err)
+	assert.Empty(t, result)
+}
+
+func TestGetTeamFeedbacks_GetMembersError(t *testing.T) {
+	repo := &mockFeedbackRepository{}
+	userRepo := &mockUserRepository{
+		GetUsersByTeamIDFn: func(_ context.Context, _ string) ([]*model.User, error) {
+			return nil, fmt.Errorf("firestore error")
+		},
+	}
+
+	svc := NewFeedbackService(repo, userRepo)
+	result, err := svc.GetTeamFeedbacks(context.Background(), "team-1")
+	assert.Error(t, err)
+	assert.Nil(t, result)
+	assert.ErrorContains(t, err, "failed to get team members")
+}
+
+func TestGetTeamFeedbacks_GetFeedbacksError(t *testing.T) {
+	repo := &mockFeedbackRepository{
+		GetFeedbacksByReviewerIDsFn: func(_ context.Context, _ []string) ([]*model.Feedback, error) {
+			return nil, fmt.Errorf("firestore error")
+		},
+	}
+	userRepo := &mockUserRepository{
+		GetUsersByTeamIDFn: func(_ context.Context, _ string) ([]*model.User, error) {
+			return []*model.User{{ID: "member-1"}}, nil
+		},
+	}
+
+	svc := NewFeedbackService(repo, userRepo)
+	result, err := svc.GetTeamFeedbacks(context.Background(), "team-1")
+	assert.Error(t, err)
+	assert.Nil(t, result)
+	assert.ErrorContains(t, err, "failed to get team feedbacks")
+}
+
+// ---------------------------------------------------------------------------
+// GetTeamDashboard tests
+// ---------------------------------------------------------------------------
+
+func TestGetTeamDashboard_Success(t *testing.T) {
+	now := time.Now()
+	members := []*model.User{
+		{ID: "member-1", Name: "Alice", Title: "Engineer", Email: "alice@example.com", TeamID: "team-1"},
+		{ID: "member-2", Name: "Bob", Title: "Manager", Email: "bob@example.com", TeamID: "team-1"},
+	}
+
+	repo := &mockFeedbackRepository{
+		GetFeedbacksByReviewerIDsFn: func(_ context.Context, _ []string) ([]*model.Feedback, error) {
+			return []*model.Feedback{
+				{
+					ID: "fb-1", ReviewerID: "member-2", RevieweeID: "member-1",
+					CommunicationScore: 5, LeadershipScore: 4, TechnicalScore: 5,
+					CollaborationScore: 4, DeliveryScore: 3, CreatedAt: now,
+				},
+				{
+					ID: "fb-2", ReviewerID: "member-1", RevieweeID: "member-2",
+					CommunicationScore: 4, LeadershipScore: 3, TechnicalScore: 4,
+					CollaborationScore: 5, DeliveryScore: 4, CreatedAt: now,
+				},
+			}, nil
+		},
+	}
+
+	userRepo := &mockUserRepository{
+		GetUsersByTeamIDFn: func(_ context.Context, _ string) ([]*model.User, error) {
+			return members, nil
+		},
+	}
+
+	svc := NewFeedbackService(repo, userRepo)
+	result, err := svc.GetTeamDashboard(context.Background(), "team-1")
+	require.NoError(t, err)
+	require.NotNil(t, result)
+
+	assert.Equal(t, 2, result.TeamMembers)
+	assert.Equal(t, 2, result.TotalFeedbacks)
+	assert.Equal(t, 100, result.FeedbackCoverage)
+	assert.Greater(t, result.AvgTeamScore, 0.0)
+	assert.Len(t, result.Members, 2)
+}
+
+func TestGetTeamDashboard_NoFeedbacks(t *testing.T) {
+	members := []*model.User{
+		{ID: "member-1", Name: "Alice", TeamID: "team-1"},
+	}
+
+	repo := &mockFeedbackRepository{
+		GetFeedbacksByReviewerIDsFn: func(_ context.Context, _ []string) ([]*model.Feedback, error) {
+			return []*model.Feedback{}, nil
+		},
+	}
+
+	userRepo := &mockUserRepository{
+		GetUsersByTeamIDFn: func(_ context.Context, _ string) ([]*model.User, error) {
+			return members, nil
+		},
+	}
+
+	svc := NewFeedbackService(repo, userRepo)
+	result, err := svc.GetTeamDashboard(context.Background(), "team-1")
+	require.NoError(t, err)
+	require.NotNil(t, result)
+
+	assert.Equal(t, 1, result.TeamMembers)
+	assert.Equal(t, 0, result.TotalFeedbacks)
+	assert.Equal(t, 0, result.FeedbackCoverage)
+	assert.Equal(t, 0.0, result.AvgTeamScore)
+}
+
+func TestGetTeamDashboard_GetMembersError(t *testing.T) {
+	repo := &mockFeedbackRepository{}
+	userRepo := &mockUserRepository{
+		GetUsersByTeamIDFn: func(_ context.Context, _ string) ([]*model.User, error) {
+			return nil, fmt.Errorf("firestore error")
+		},
+	}
+
+	svc := NewFeedbackService(repo, userRepo)
+	result, err := svc.GetTeamDashboard(context.Background(), "team-1")
+	assert.Error(t, err)
+	assert.Nil(t, result)
+	assert.ErrorContains(t, err, "failed to get team members")
+}
+
+// ---------------------------------------------------------------------------
+// ExportFeedbacksForUser tests
+// ---------------------------------------------------------------------------
+
+func TestExportFeedbacksForUser_Success_Named(t *testing.T) {
+	now := time.Now()
+	recent := now.Add(-24 * time.Hour)
+	old := now.AddDate(-2, 0, 0)
+
+	feedbacks := []*model.Feedback{
+		{
+			ID: "fb-1", ReviewerID: "reviewer-1", RevieweeID: "user-1",
+			Visibility: "named", CreatedAt: recent,
+		},
+		{
+			ID: "fb-2", ReviewerID: "reviewer-2", RevieweeID: "user-1",
+			Visibility: "anonymous", CreatedAt: recent,
+		},
+		// older than 12 months - should be filtered out
+		{
+			ID: "fb-old", ReviewerID: "reviewer-1", RevieweeID: "user-1",
+			Visibility: "named", CreatedAt: old,
+		},
+	}
+
+	repo := &mockFeedbackRepository{
+		GetFeedbacksByRevieweeIDFn: func(_ context.Context, revieweeID string, limit int, cursor string) ([]*model.Feedback, error) {
+			assert.Equal(t, "user-1", revieweeID)
+			assert.Equal(t, 1000, limit)
+			assert.Empty(t, cursor)
+			return feedbacks, nil
+		},
+	}
+
+	userRepo := &mockUserRepository{
+		GetUserByIDFn: func(_ context.Context, id string) (*model.User, error) {
+			return &model.User{ID: id, Name: "Reviewer " + id}, nil
+		},
+	}
+
+	svc := NewFeedbackService(repo, userRepo)
+	result, err := svc.ExportFeedbacksForUser(context.Background(), "user-1")
+	require.NoError(t, err)
+	assert.Len(t, result, 2)
+
+	// named feedback should have reviewer name
+	assert.Equal(t, "fb-1", result[0].Feedback.ID)
+	assert.NotEmpty(t, result[0].ReviewerName)
+
+	// anonymous feedback should have empty reviewer name
+	assert.Equal(t, "fb-2", result[1].Feedback.ID)
+	assert.Empty(t, result[1].ReviewerName)
+}
+
+func TestExportFeedbacksForUser_Empty(t *testing.T) {
+	repo := &mockFeedbackRepository{
+		GetFeedbacksByRevieweeIDFn: func(_ context.Context, _ string, _ int, _ string) ([]*model.Feedback, error) {
+			return []*model.Feedback{}, nil
+		},
+	}
+
+	svc := NewFeedbackService(repo, validUserRepo())
+	result, err := svc.ExportFeedbacksForUser(context.Background(), "user-1")
+	require.NoError(t, err)
+	assert.Empty(t, result)
+}
+
+func TestExportFeedbacksForUser_RepoError(t *testing.T) {
+	repo := &mockFeedbackRepository{
+		GetFeedbacksByRevieweeIDFn: func(_ context.Context, _ string, _ int, _ string) ([]*model.Feedback, error) {
+			return nil, fmt.Errorf("firestore error")
+		},
+	}
+
+	svc := NewFeedbackService(repo, validUserRepo())
+	result, err := svc.ExportFeedbacksForUser(context.Background(), "user-1")
+	assert.Error(t, err)
+	assert.Nil(t, result)
+	assert.ErrorContains(t, err, "failed to get feedbacks for export")
+}
+
+func TestExportFeedbacksForUser_FiltersOldFeedbacks(t *testing.T) {
+	now := time.Now()
+	feedbacks := []*model.Feedback{
+		{ID: "recent", ReviewerID: "r1", Visibility: "named", CreatedAt: now.Add(-30 * 24 * time.Hour)},
+		{ID: "old", ReviewerID: "r1", Visibility: "named", CreatedAt: now.AddDate(-2, 0, 0)},
+	}
+
+	repo := &mockFeedbackRepository{
+		GetFeedbacksByRevieweeIDFn: func(_ context.Context, _ string, _ int, _ string) ([]*model.Feedback, error) {
+			return feedbacks, nil
+		},
+	}
+
+	svc := NewFeedbackService(repo, validUserRepo())
+	result, err := svc.ExportFeedbacksForUser(context.Background(), "user-1")
+	require.NoError(t, err)
+	assert.Len(t, result, 1)
+	assert.Equal(t, "recent", result[0].Feedback.ID)
+}
+
+// ---------------------------------------------------------------------------
+// GetFeedbacksForMember tests
+// ---------------------------------------------------------------------------
+
+func TestGetFeedbacksForMember_Success(t *testing.T) {
+	now := time.Now()
+
+	repo := &mockFeedbackRepository{
+		GetFeedbacksByRevieweeIDFn: func(_ context.Context, memberID string, limit int, cursor string) ([]*model.Feedback, error) {
+			assert.Equal(t, "member-1", memberID)
+			assert.Equal(t, 10, limit)
+			return []*model.Feedback{
+				{ID: "fb-1", RevieweeID: "member-1", CreatedAt: now},
+			}, nil
+		},
+	}
+
+	userRepo := &mockUserRepository{
+		GetUserByIDFn: func(_ context.Context, id string) (*model.User, error) {
+			return &model.User{ID: id, TeamID: "team-1"}, nil
+		},
+	}
+
+	svc := NewFeedbackService(repo, userRepo)
+	result, err := svc.GetFeedbacksForMember(context.Background(), "team-1", "member-1", 10, "")
+	require.NoError(t, err)
+	assert.Len(t, result, 1)
+	assert.Equal(t, "fb-1", result[0].ID)
+}
+
+func TestGetFeedbacksForMember_MemberNotFound(t *testing.T) {
+	repo := &mockFeedbackRepository{}
+	userRepo := &mockUserRepository{
+		GetUserByIDFn: func(_ context.Context, _ string) (*model.User, error) {
+			return nil, fmt.Errorf("not found")
+		},
+	}
+
+	svc := NewFeedbackService(repo, userRepo)
+	result, err := svc.GetFeedbacksForMember(context.Background(), "team-1", "member-1", 10, "")
+	assert.Error(t, err)
+	assert.Nil(t, result)
+	assert.ErrorIs(t, err, ErrRevieweeNotFound)
+}
+
+func TestGetFeedbacksForMember_MemberNotInTeam(t *testing.T) {
+	repo := &mockFeedbackRepository{}
+	userRepo := &mockUserRepository{
+		GetUserByIDFn: func(_ context.Context, id string) (*model.User, error) {
+			return &model.User{ID: id, TeamID: "other-team"}, nil
+		},
+	}
+
+	svc := NewFeedbackService(repo, userRepo)
+	result, err := svc.GetFeedbacksForMember(context.Background(), "team-1", "member-1", 10, "")
+	assert.Error(t, err)
+	assert.Nil(t, result)
+	assert.ErrorIs(t, err, ErrMemberNotInTeam)
+}
+
+func TestGetFeedbacksForMember_RepoError(t *testing.T) {
+	repo := &mockFeedbackRepository{
+		GetFeedbacksByRevieweeIDFn: func(_ context.Context, _ string, _ int, _ string) ([]*model.Feedback, error) {
+			return nil, fmt.Errorf("firestore error")
+		},
+	}
+	userRepo := &mockUserRepository{
+		GetUserByIDFn: func(_ context.Context, id string) (*model.User, error) {
+			return &model.User{ID: id, TeamID: "team-1"}, nil
+		},
+	}
+
+	svc := NewFeedbackService(repo, userRepo)
+	result, err := svc.GetFeedbacksForMember(context.Background(), "team-1", "member-1", 10, "")
+	assert.Error(t, err)
+	assert.Nil(t, result)
+	assert.ErrorContains(t, err, "failed to get member feedbacks")
+}
+
+// ---------------------------------------------------------------------------
+// round2 helper test
+// ---------------------------------------------------------------------------
+
+func TestRound2(t *testing.T) {
+	tests := []struct {
+		input    float64
+		expected float64
+	}{
+		{3.14159, 3.14},
+		{3.145, 3.15},
+		{3.0, 3.0},
+		{0.0, 0.0},
+		{4.666, 4.67},
+	}
+
+	for _, tt := range tests {
+		result := round2(tt.input)
+		assert.Equal(t, tt.expected, result)
+	}
+}

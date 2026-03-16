@@ -90,6 +90,7 @@ func main() {
 	api := e.Group("", custommiddleware.JWTAuth(jwtSecret))
 	api.GET("/me/teammates", userHandler.GetTeammates)
 	api.GET("/me/feedbacks", feedbackHandler.GetMyFeedbacks)
+	api.GET("/me/feedbacks/export", feedbackHandler.ExportMyFeedbacksPDF)
 	api.GET("/me/given-feedbacks", feedbackHandler.GetMyGivenFeedbacks)
 	api.POST("/feedbacks", feedbackHandler.CreateFeedback)
 	api.GET("/teams/:teamId/feedbacks", feedbackHandler.GetTeamFeedbacks, custommiddleware.RequireRole("manager"))
