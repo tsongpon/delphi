@@ -140,23 +140,6 @@ func (s *UserServiceImpl) RegisterManager(ctx context.Context, user *model.User,
 // If the email already exists with no team, the user is assigned to the team.
 // Returns ErrEmailBelongsToDifferentTeam if the email is already on a different team.
 func (s *UserServiceImpl) RegisterMember(ctx context.Context, user *model.User, teamID, role string) (string, error) {
-	existing, err := s.repo.GetUserByEmail(ctx, user.Email)
-	if err == nil && existing != nil {
-		// Email already exists
-		if existing.TeamID != "" && existing.TeamID != teamID {
-			return "", ErrEmailBelongsToDifferentTeam
-		}
-		if err := s.repo.UpdateTeamID(ctx, existing.ID, teamID); err != nil {
-			return "", fmt.Errorf("failed to assign team to existing user: %w", err)
-		}
-		existing.TeamID = teamID
-		token, err := s.generateToken(existing)
-		if err != nil {
-			return "", fmt.Errorf("failed to sign token: %w", err)
-		}
-		return token, nil
-	}
-
 	// New user
 	now := time.Now()
 	user.ID = hashEmail(user.Email)

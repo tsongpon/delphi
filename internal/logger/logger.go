@@ -1,9 +1,11 @@
 package logger
 
 import (
+	"log/slog"
 	"os"
 
 	"go.uber.org/zap"
+	"go.uber.org/zap/exp/zapslog"
 	"go.uber.org/zap/zapcore"
 )
 
@@ -15,15 +17,15 @@ func Initialize() error {
 
 	// Check environment
 	env := os.Getenv("APP_ENV")
-	if env == "production" {
-		// Production configuration: JSON formatted, Info level
-		config = zap.NewProductionConfig()
-		config.EncoderConfig.TimeKey = "timestamp"
-		config.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
-	} else {
+	if env == "development" {
 		// Development configuration: Console formatted, Debug level
 		config = zap.NewDevelopmentConfig()
 		config.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
+		config.EncoderConfig.TimeKey = "timestamp"
+		config.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
+	} else {
+		// Production configuration: JSON formatted, Info level
+		config = zap.NewProductionConfig()
 		config.EncoderConfig.TimeKey = "timestamp"
 		config.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
 	}
@@ -91,4 +93,10 @@ func Fatal(msg string, fields ...zap.Field) {
 // With creates a child logger with additional fields
 func With(fields ...zap.Field) *zap.Logger {
 	return Get().With(fields...)
+}
+
+// Slog returns a *slog.Logger backed by the global zap logger.
+// Use this to plug into frameworks that accept *slog.Logger (e.g. Echo v5).
+func Slog() *slog.Logger {
+	return slog.New(zapslog.NewHandler(Get().Core()))
 }

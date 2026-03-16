@@ -12,6 +12,7 @@ import (
 	"github.com/labstack/echo/v5/middleware"
 	"github.com/tsongpon/delphi/internal/handler"
 	custommiddleware "github.com/tsongpon/delphi/internal/middleware"
+	"github.com/tsongpon/delphi/internal/logger"
 	"github.com/tsongpon/delphi/internal/repository"
 	"github.com/tsongpon/delphi/internal/service"
 )
@@ -19,6 +20,11 @@ import (
 func main() {
 	// Load .env file if present (ignored if not found)
 	_ = godotenv.Load()
+
+	if err := logger.Initialize(); err != nil {
+		log.Fatalf("failed to initialize logger: %v", err)
+	}
+	defer logger.Sync()
 
 	projectID := os.Getenv("GCP_PROJECT_ID")
 	databaseID := os.Getenv("GCP_FIRESTORE_DATABASE_ID")
@@ -67,6 +73,7 @@ func main() {
 	inviteLinkHandler := handler.NewInviteLinkHandler(inviteLinkService)
 
 	e := echo.New()
+	e.Logger = logger.Slog()
 	e.Use(middleware.CORS("*"))
 
 	// Public routes

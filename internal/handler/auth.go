@@ -25,6 +25,7 @@ func NewAuthHandler(userService UserService, inviteLinkService InviteLinkService
 }
 
 func (h *AuthHandler) RegisterUser(c *echo.Context) error {
+	logger.Debug("start register user")
 	var req registerUserRequest
 	if err := c.Bind(&req); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid request body"})
