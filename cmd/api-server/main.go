@@ -20,15 +20,13 @@ func main() {
 	// Load .env file if present (ignored if not found)
 	_ = godotenv.Load()
 
-	ctx := context.Background()
-
 	projectID := os.Getenv("GCP_PROJECT_ID")
 	databaseID := os.Getenv("GCP_FIRESTORE_DATABASE_ID")
 	if projectID == "" {
 		log.Fatal("GCP_PROJECT_ID environment variable is required")
 	}
 
-	firestoreClient, err := firestore.NewClientWithDatabase(ctx, projectID, databaseID)
+	firestoreClient, err := firestore.NewClientWithDatabase(context.Background(), projectID, databaseID)
 	if err != nil {
 		log.Fatalf("failed to create firestore client: %v", err)
 	}
