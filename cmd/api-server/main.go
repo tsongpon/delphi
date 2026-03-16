@@ -11,8 +11,8 @@ import (
 	"github.com/labstack/echo/v5"
 	"github.com/labstack/echo/v5/middleware"
 	"github.com/tsongpon/delphi/internal/handler"
-	custommiddleware "github.com/tsongpon/delphi/internal/middleware"
 	"github.com/tsongpon/delphi/internal/logger"
+	custommiddleware "github.com/tsongpon/delphi/internal/middleware"
 	"github.com/tsongpon/delphi/internal/repository"
 	"github.com/tsongpon/delphi/internal/service"
 )
@@ -74,6 +74,7 @@ func main() {
 
 	e := echo.New()
 	e.Logger = logger.Slog()
+	e.Use(middleware.RateLimiter(middleware.NewRateLimiterMemoryStore(20)))
 	e.Use(middleware.CORS("*"))
 
 	// Public routes
