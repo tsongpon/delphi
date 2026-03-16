@@ -37,16 +37,24 @@ func NewUserService(repo UserRepository, teamRepo TeamRepository, jwtSecret stri
 }
 
 // generateToken creates a signed JWT for the given user.
-func (s *UserServiceImpl) generateToken(user *model.User) (string, error) {
+func (s *UserServiceImpl) generateToken(ctx context.Context, user *model.User) (string, error) {
+	teamName := ""
+	if user.TeamID != "" {
+		if team, err := s.teamRepo.GetTeamByID(ctx, user.TeamID); err == nil {
+			teamName = team.Name
+		}
+	}
 	now := time.Now()
 	claims := jwt.MapClaims{
-		"sub":     user.ID,
-		"email":   user.Email,
-		"name":    user.Name,
-		"role":    user.Role,
-		"team_id": user.TeamID,
-		"iat":     now.Unix(),
-		"exp":     now.Add(24 * time.Hour).Unix(),
+		"sub":       user.ID,
+		"email":     user.Email,
+		"name":      user.Name,
+		"title":     user.Title,
+		"role":      user.Role,
+		"team_id":   user.TeamID,
+		"team_name": teamName,
+		"iat":       now.Unix(),
+		"exp":       now.Add(24 * time.Hour).Unix(),
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return token.SignedString(s.jwtSecret)
@@ -76,7 +84,7 @@ func (s *UserServiceImpl) RegisterUser(ctx context.Context, user *model.User) (s
 		return "", fmt.Errorf("failed to create user: %w", err)
 	}
 
-	token, err := s.generateToken(createdUser)
+	token, err := s.generateToken(ctx, createdUser)
 	if err != nil {
 		return "", fmt.Errorf("failed to sign token: %w", err)
 	}
@@ -129,7 +137,7 @@ func (s *UserServiceImpl) RegisterManager(ctx context.Context, user *model.User,
 		return "", fmt.Errorf("failed to create team: %w", err)
 	}
 
-	token, err := s.generateToken(createdUser)
+	token, err := s.generateToken(ctx, createdUser)
 	if err != nil {
 		return "", fmt.Errorf("failed to sign token: %w", err)
 	}
@@ -163,7 +171,7 @@ func (s *UserServiceImpl) RegisterMember(ctx context.Context, user *model.User, 
 		return "", fmt.Errorf("failed to create user: %w", err)
 	}
 
-	token, err := s.generateToken(createdUser)
+	token, err := s.generateToken(ctx, createdUser)
 	if err != nil {
 		return "", fmt.Errorf("failed to sign token: %w", err)
 	}
@@ -181,7 +189,7 @@ func (s *UserServiceImpl) LoginUser(ctx context.Context, email, password string)
 		return "", errInvalidCredentials
 	}
 
-	token, err := s.generateToken(user)
+	token, err := s.generateToken(ctx, user)
 	if err != nil {
 		return "", fmt.Errorf("failed to sign token: %w", err)
 	}
