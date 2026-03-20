@@ -17,7 +17,8 @@ type mockFeedbackRepository struct {
 	GetFeedbackFn                 func(ctx context.Context, reviewerID, revieweeID, period string) (*model.Feedback, error)
 	GetFeedbacksByRevieweeIDFn    func(ctx context.Context, revieweeID string, limit int, cursor string) ([]*model.Feedback, error)
 	GetFeedbacksByReviewerIDFn    func(ctx context.Context, reviewerID string, limit int, cursor string) ([]*model.Feedback, error)
-	GetFeedbacksByReviewerIDsFn   func(ctx context.Context, reviewerIDs []string) ([]*model.Feedback, error)
+	GetFeedbacksByReviewerIDsFn      func(ctx context.Context, reviewerIDs []string) ([]*model.Feedback, error)
+	GetFeedbacksByRevieweeIDSinceFn  func(ctx context.Context, revieweeID string, since time.Time) ([]*model.Feedback, error)
 }
 
 func (m *mockFeedbackRepository) CreateFeedback(ctx context.Context, feedback *model.Feedback) (*model.Feedback, error) {
@@ -39,6 +40,13 @@ func (m *mockFeedbackRepository) GetFeedbacksByReviewerID(ctx context.Context, r
 func (m *mockFeedbackRepository) GetFeedbacksByReviewerIDs(ctx context.Context, reviewerIDs []string) ([]*model.Feedback, error) {
 	if m.GetFeedbacksByReviewerIDsFn != nil {
 		return m.GetFeedbacksByReviewerIDsFn(ctx, reviewerIDs)
+	}
+	return nil, nil
+}
+
+func (m *mockFeedbackRepository) GetFeedbacksByRevieweeIDSince(ctx context.Context, revieweeID string, since time.Time) ([]*model.Feedback, error) {
+	if m.GetFeedbacksByRevieweeIDSinceFn != nil {
+		return m.GetFeedbacksByRevieweeIDSinceFn(ctx, revieweeID, since)
 	}
 	return nil, nil
 }

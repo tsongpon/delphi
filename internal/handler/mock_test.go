@@ -97,6 +97,18 @@ func (m *mockInviteLinkService) IncrementUsedCount(ctx context.Context, id strin
 	return nil
 }
 
+// mockNotifyService implements NotifyService for handler tests.
+type mockNotifyService struct {
+	SendFeedbackDigestFn func(ctx context.Context, teamID string) (*service.NotifyResult, error)
+}
+
+func (m *mockNotifyService) SendFeedbackDigest(ctx context.Context, teamID string) (*service.NotifyResult, error) {
+	if m.SendFeedbackDigestFn != nil {
+		return m.SendFeedbackDigestFn(ctx, teamID)
+	}
+	return &service.NotifyResult{}, nil
+}
+
 // mockFeedbackService implements FeedbackService for handler tests.
 type mockFeedbackService struct {
 	CreateFeedbackFn            func(ctx context.Context, feedback *model.Feedback) (*model.Feedback, error)

@@ -228,6 +228,35 @@ func (r *FeedbackFirestoreRepository) GetFeedbacksByReviewerIDs(ctx context.Cont
 	return all, nil
 }
 
+// GetFeedbacksByRevieweeIDSince returns all feedbacks for a reviewee created at or after the given time.
+func (r *FeedbackFirestoreRepository) GetFeedbacksByRevieweeIDSince(ctx context.Context, revieweeID string, since time.Time) ([]*model.Feedback, error) {
+	iter := r.client.Collection(feedbacksCollection).
+		Where("reviewee_id", "==", revieweeID).
+		Where("created_at", ">=", since).
+		Documents(ctx)
+	defer iter.Stop()
+
+	var feedbacks []*model.Feedback
+	for {
+		docSnap, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			logger.Error("failed to get feedbacks since date", zap.Error(err))
+			return nil, fmt.Errorf("failed to get feedbacks since date: %w", err)
+		}
+		var doc feedbackDocument
+		if err := docSnap.DataTo(&doc); err != nil {
+			logger.Error("failed to deserialize feedback document", zap.Error(err))
+			return nil, fmt.Errorf("failed to deserialize feedback document: %w", err)
+		}
+		feedbacks = append(feedbacks, toFeedbackModel(&doc))
+	}
+
+	return feedbacks, nil
+}
+
 func (r *FeedbackFirestoreRepository) GetFeedback(ctx context.Context, reviewerID, revieweeID, period string) (*model.Feedback, error) {
 	iter := r.client.Collection(feedbacksCollection).
 		Where("reviewer_id", "==", reviewerID).

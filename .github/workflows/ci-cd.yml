@@ -66,4 +66,6 @@ jobs:
           GCP_FIRESTORE_DATABASE_ID=${{ secrets.GCP_FIRESTORE_DATABASE_ID }},\
           APP_BASE_URL=${{ secrets.APP_BASE_URL }},\
           JWT_SECRET=${{ secrets.JWT_SECRET }},\
-          ADMIN_SECRET=${{ secrets.ADMIN_SECRET }}"
+          ADMIN_SECRET=${{ secrets.ADMIN_SECRET }},\
+          RESEND_API_KEY=${{ secrets.RESEND_API_KEY }},\
+          RESEND_FROM_EMAIL=${{ secrets.RESEND_FROM_EMAIL }}"

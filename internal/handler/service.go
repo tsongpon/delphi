@@ -36,6 +36,12 @@ type PasswordResetService interface {
 	ResetPassword(ctx context.Context, rawToken, newPassword string) error
 }
 
+type NotifyService interface {
+	// SendFeedbackDigest sends digest emails for feedback received yesterday.
+	// Pass a non-empty teamID to restrict notifications to that team only.
+	SendFeedbackDigest(ctx context.Context, teamID string) (*service.NotifyResult, error)
+}
+
 type InviteLinkService interface {
 	CreateInviteLink(ctx context.Context, teamID, createdBy string, expiresInDays int) (*model.InviteLink, string, error)
 	ListLinks(ctx context.Context, teamID string) ([]*model.InviteLink, error)

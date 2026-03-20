@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"time"
 
 	"github.com/tsongpon/delphi/internal/model"
 )
@@ -11,6 +12,7 @@ type UserRepository interface {
 	GetUserByEmail(ctx context.Context, email string) (*model.User, error)
 	GetUserByID(ctx context.Context, id string) (*model.User, error)
 	GetUsersByTeamID(ctx context.Context, teamID string) ([]*model.User, error)
+	GetAllUsers(ctx context.Context) ([]*model.User, error)
 	UpdatePassword(ctx context.Context, userID, hashedPassword string) error
 	UpdateRole(ctx context.Context, userID, role string) error
 	UpdateTeamID(ctx context.Context, userID, teamID string) error
@@ -35,6 +37,11 @@ type FeedbackRepository interface {
 	GetFeedbacksByRevieweeID(ctx context.Context, revieweeID string, limit int, cursor string) ([]*model.Feedback, error)
 	GetFeedbacksByReviewerID(ctx context.Context, reviewerID string, limit int, cursor string) ([]*model.Feedback, error)
 	GetFeedbacksByReviewerIDs(ctx context.Context, reviewerIDs []string) ([]*model.Feedback, error)
+	GetFeedbacksByRevieweeIDSince(ctx context.Context, revieweeID string, since time.Time) ([]*model.Feedback, error)
+}
+
+type EmailSender interface {
+	SendFeedbackDigest(ctx context.Context, toName, toEmail string, count int) error
 }
 
 type InviteLinkRepository interface {
