@@ -185,6 +185,33 @@ func (r *UserFirestoreRepository) DeleteUser(ctx context.Context, userID string)
 	return nil
 }
 
+// GetAllUsers returns all users in the Firestore "users" collection.
+func (r *UserFirestoreRepository) GetAllUsers(ctx context.Context) ([]*model.User, error) {
+	iter := r.client.Collection(usersCollection).Documents(ctx)
+	defer iter.Stop()
+
+	var users []*model.User
+	for {
+		docSnap, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			logger.Error("failed to get all users", zap.Error(err))
+			return nil, fmt.Errorf("failed to get all users: %w", err)
+		}
+
+		var doc userDocument
+		if err := docSnap.DataTo(&doc); err != nil {
+			logger.Error("failed to deserialize user document", zap.Error(err))
+			continue
+		}
+		users = append(users, toModel(&doc))
+	}
+
+	return users, nil
+}
+
 // GetUserByEmail queries the Firestore "users" collection for a user with the given email.
 func (r *UserFirestoreRepository) GetUserByEmail(ctx context.Context, email string) (*model.User, error) {
 	iter := r.client.Collection(usersCollection).Where("email", "==", email).Limit(1).Documents(ctx)

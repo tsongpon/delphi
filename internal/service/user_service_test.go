@@ -20,6 +20,7 @@ type mockUserRepository struct {
 	GetUserByEmailFn   func(ctx context.Context, email string) (*model.User, error)
 	GetUserByIDFn      func(ctx context.Context, id string) (*model.User, error)
 	GetUsersByTeamIDFn func(ctx context.Context, teamID string) ([]*model.User, error)
+	GetAllUsersFn      func(ctx context.Context) ([]*model.User, error)
 	UpdatePasswordFn   func(ctx context.Context, userID, hashedPassword string) error
 	UpdateRoleFn       func(ctx context.Context, userID, role string) error
 	UpdateTeamIDFn     func(ctx context.Context, userID, teamID string) error
@@ -71,6 +72,13 @@ func (m *mockUserRepository) DeleteUser(ctx context.Context, userID string) erro
 		return m.DeleteUserFn(ctx, userID)
 	}
 	return nil
+}
+
+func (m *mockUserRepository) GetAllUsers(ctx context.Context) ([]*model.User, error) {
+	if m.GetAllUsersFn != nil {
+		return m.GetAllUsersFn(ctx)
+	}
+	return nil, nil
 }
 
 // mockTeamRepository implements TeamRepository for testing.

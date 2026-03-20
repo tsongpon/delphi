@@ -59,11 +59,22 @@ func main() {
 	teamRepo := repository.NewTeamFirestoreRepository(firestoreClient)
 	inviteLinkRepo := repository.NewInviteLinkFirestoreRepository(firestoreClient)
 
+	resendAPIKey := os.Getenv("RESEND_API_KEY")
+	if resendAPIKey == "" {
+		log.Fatal("RESEND_API_KEY environment variable is required")
+	}
+	resendFromEmail := os.Getenv("RESEND_FROM_EMAIL")
+	if resendFromEmail == "" {
+		log.Fatal("RESEND_FROM_EMAIL environment variable is required")
+	}
+
 	userService := service.NewUserService(userRepo, teamRepo, jwtSecret)
 	feedbackService := service.NewFeedbackService(feedbackRepo, userRepo)
 	passwordResetService := service.NewPasswordResetService(tokenRepo, userRepo, appBaseURL)
 	teamService := service.NewTeamService(teamRepo)
 	inviteLinkService := service.NewInviteLinkService(inviteLinkRepo, teamRepo, jwtSecret, appBaseURL)
+	emailSender := repository.NewResendEmailSender(resendAPIKey, resendFromEmail, appBaseURL)
+	notifyService := service.NewNotifyService(userRepo, feedbackRepo, emailSender)
 
 	authHandler := handler.NewAuthHandler(userService, inviteLinkService)
 	userHandler := handler.NewUserHandler(userService)
@@ -71,6 +82,7 @@ func main() {
 	passwordResetHandler := handler.NewPasswordResetHandler(passwordResetService)
 	adminHandler := handler.NewAdminHandler(userService, teamService)
 	inviteLinkHandler := handler.NewInviteLinkHandler(inviteLinkService)
+	notifyHandler := handler.NewNotifyHandler(notifyService)
 
 	e := echo.New()
 	e.Logger = logger.Slog()
@@ -105,6 +117,7 @@ func main() {
 	admin.POST("/users/:userID/reset-link", passwordResetHandler.GenerateResetLink)
 	admin.PUT("/users/:userID/role", adminHandler.UpdateUserRole)
 	admin.POST("/teams", adminHandler.CreateTeam)
+	admin.POST("/feedback-notify", notifyHandler.SendFeedbackDigest)
 
 	if err := e.Start(":8080"); err != nil {
 		e.Logger.Error("failed to start server", "error", err)
