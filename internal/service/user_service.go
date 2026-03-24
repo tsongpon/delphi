@@ -86,6 +86,7 @@ func (s *UserServiceImpl) RegisterUser(ctx context.Context, user *model.User) (s
 
 	token, err := s.generateToken(ctx, createdUser)
 	if err != nil {
+		logger.Error("failed to sign token", zap.Error(err))
 		return "", fmt.Errorf("failed to sign token: %w", err)
 	}
 	return token, nil
@@ -139,6 +140,7 @@ func (s *UserServiceImpl) RegisterManager(ctx context.Context, user *model.User,
 
 	token, err := s.generateToken(ctx, createdUser)
 	if err != nil {
+		logger.Error("failed to sign token", zap.Error(err))
 		return "", fmt.Errorf("failed to sign token: %w", err)
 	}
 	return token, nil
@@ -198,7 +200,11 @@ func (s *UserServiceImpl) LoginUser(ctx context.Context, email, password string)
 
 // UpdateUserRole updates the role of a user.
 func (s *UserServiceImpl) UpdateUserRole(ctx context.Context, userID, role string) error {
-	return s.repo.UpdateRole(ctx, userID, role)
+	err := s.repo.UpdateRole(ctx, userID, role)
+	if err != nil {
+		logger.Error("failed to update user role", zap.Error(err))
+	}
+	return err
 }
 
 // GetTeammates returns all users sharing the same team as the given user, excluding the user themselves.

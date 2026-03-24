@@ -128,7 +128,7 @@ func TestCreateFeedback_Success(t *testing.T) {
 		},
 	}
 
-	svc := NewFeedbackService(repo, validUserRepo(), validPeriodRepo())
+	svc := NewFeedbackService(repo, validUserRepo(), validPeriodRepo(), nil)
 
 	feedback := &model.Feedback{
 		ReviewerID:         "reviewer-1",
@@ -176,7 +176,7 @@ func TestCreateFeedback_UsesActivePeriodName(t *testing.T) {
 		},
 	}
 
-	svc := NewFeedbackService(repo, validUserRepo(), periodRepo)
+	svc := NewFeedbackService(repo, validUserRepo(), periodRepo, nil)
 	result, err := svc.CreateFeedback(context.Background(), &model.Feedback{
 		ReviewerID: "reviewer-1", RevieweeID: "reviewee-1", Visibility: "named",
 	})
@@ -192,7 +192,7 @@ func TestCreateFeedback_NoActivePeriod(t *testing.T) {
 		},
 	}
 
-	svc := NewFeedbackService(repo, validUserRepo(), periodRepo)
+	svc := NewFeedbackService(repo, validUserRepo(), periodRepo, nil)
 	result, err := svc.CreateFeedback(context.Background(), &model.Feedback{
 		ReviewerID: "reviewer-1", RevieweeID: "reviewee-1", Visibility: "named",
 	})
@@ -209,7 +209,7 @@ func TestCreateFeedback_PeriodRepoError(t *testing.T) {
 		},
 	}
 
-	svc := NewFeedbackService(repo, validUserRepo(), periodRepo)
+	svc := NewFeedbackService(repo, validUserRepo(), periodRepo, nil)
 	result, err := svc.CreateFeedback(context.Background(), &model.Feedback{
 		ReviewerID: "reviewer-1", RevieweeID: "reviewee-1", Visibility: "named",
 	})
@@ -225,7 +225,7 @@ func TestCreateFeedback_Duplicate(t *testing.T) {
 		},
 	}
 
-	svc := NewFeedbackService(repo, validUserRepo(), validPeriodRepo())
+	svc := NewFeedbackService(repo, validUserRepo(), validPeriodRepo(), nil)
 
 	feedback := &model.Feedback{
 		ReviewerID: "reviewer-1",
@@ -250,7 +250,7 @@ func TestCreateFeedback_ReviewerNotFound(t *testing.T) {
 		},
 	}
 
-	svc := NewFeedbackService(repo, userRepo, validPeriodRepo())
+	svc := NewFeedbackService(repo, userRepo, validPeriodRepo(), nil)
 
 	feedback := &model.Feedback{ReviewerID: "reviewer-1", RevieweeID: "reviewee-1", Visibility: "named"}
 	result, err := svc.CreateFeedback(context.Background(), feedback)
@@ -270,7 +270,7 @@ func TestCreateFeedback_RevieweeNotFound(t *testing.T) {
 		},
 	}
 
-	svc := NewFeedbackService(repo, userRepo, validPeriodRepo())
+	svc := NewFeedbackService(repo, userRepo, validPeriodRepo(), nil)
 
 	feedback := &model.Feedback{ReviewerID: "reviewer-1", RevieweeID: "reviewee-1", Visibility: "named"}
 	result, err := svc.CreateFeedback(context.Background(), feedback)
@@ -286,7 +286,7 @@ func TestCreateFeedback_GetFeedbackRepoError(t *testing.T) {
 		},
 	}
 
-	svc := NewFeedbackService(repo, validUserRepo(), validPeriodRepo())
+	svc := NewFeedbackService(repo, validUserRepo(), validPeriodRepo(), nil)
 
 	feedback := &model.Feedback{ReviewerID: "r1", RevieweeID: "r2", Visibility: "named"}
 	result, err := svc.CreateFeedback(context.Background(), feedback)
@@ -305,7 +305,7 @@ func TestCreateFeedback_CreateRepoError(t *testing.T) {
 		},
 	}
 
-	svc := NewFeedbackService(repo, validUserRepo(), validPeriodRepo())
+	svc := NewFeedbackService(repo, validUserRepo(), validPeriodRepo(), nil)
 
 	feedback := &model.Feedback{ReviewerID: "r1", RevieweeID: "r2", Visibility: "named"}
 	result, err := svc.CreateFeedback(context.Background(), feedback)
@@ -333,7 +333,7 @@ func TestGetFeedbacksForUser_Success(t *testing.T) {
 		},
 	}
 
-	svc := NewFeedbackService(repo, validUserRepo(), validPeriodRepo())
+	svc := NewFeedbackService(repo, validUserRepo(), validPeriodRepo(), nil)
 	result, err := svc.GetFeedbacksForUser(context.Background(), "user-1", 16, "")
 	require.NoError(t, err)
 	assert.Len(t, result, 2)
@@ -348,7 +348,7 @@ func TestGetFeedbacksForUser_Empty(t *testing.T) {
 		},
 	}
 
-	svc := NewFeedbackService(repo, validUserRepo(), validPeriodRepo())
+	svc := NewFeedbackService(repo, validUserRepo(), validPeriodRepo(), nil)
 	result, err := svc.GetFeedbacksForUser(context.Background(), "user-1", 16, "")
 	require.NoError(t, err)
 	assert.Empty(t, result)
@@ -361,7 +361,7 @@ func TestGetFeedbacksForUser_RepoError(t *testing.T) {
 		},
 	}
 
-	svc := NewFeedbackService(repo, validUserRepo(), validPeriodRepo())
+	svc := NewFeedbackService(repo, validUserRepo(), validPeriodRepo(), nil)
 	result, err := svc.GetFeedbacksForUser(context.Background(), "user-1", 16, "")
 	assert.Error(t, err)
 	assert.Nil(t, result)
@@ -387,7 +387,7 @@ func TestGetGivenFeedbacksForUser_Success(t *testing.T) {
 		},
 	}
 
-	svc := NewFeedbackService(repo, validUserRepo(), validPeriodRepo())
+	svc := NewFeedbackService(repo, validUserRepo(), validPeriodRepo(), nil)
 	result, err := svc.GetGivenFeedbacksForUser(context.Background(), "user-1", 16, "")
 	require.NoError(t, err)
 	assert.Len(t, result, 2)
@@ -402,7 +402,7 @@ func TestGetGivenFeedbacksForUser_Empty(t *testing.T) {
 		},
 	}
 
-	svc := NewFeedbackService(repo, validUserRepo(), validPeriodRepo())
+	svc := NewFeedbackService(repo, validUserRepo(), validPeriodRepo(), nil)
 	result, err := svc.GetGivenFeedbacksForUser(context.Background(), "user-1", 16, "")
 	require.NoError(t, err)
 	assert.Empty(t, result)
@@ -415,7 +415,7 @@ func TestGetGivenFeedbacksForUser_RepoError(t *testing.T) {
 		},
 	}
 
-	svc := NewFeedbackService(repo, validUserRepo(), validPeriodRepo())
+	svc := NewFeedbackService(repo, validUserRepo(), validPeriodRepo(), nil)
 	result, err := svc.GetGivenFeedbacksForUser(context.Background(), "user-1", 16, "")
 	assert.Error(t, err)
 	assert.Nil(t, result)
@@ -451,7 +451,7 @@ func TestGetTeamFeedbacks_Success(t *testing.T) {
 		},
 	}
 
-	svc := NewFeedbackService(repo, userRepo, validPeriodRepo())
+	svc := NewFeedbackService(repo, userRepo, validPeriodRepo(), nil)
 	result, err := svc.GetTeamFeedbacks(context.Background(), "team-1")
 	require.NoError(t, err)
 	assert.Len(t, result, 2)
@@ -467,7 +467,7 @@ func TestGetTeamFeedbacks_EmptyTeam(t *testing.T) {
 		},
 	}
 
-	svc := NewFeedbackService(repo, userRepo, validPeriodRepo())
+	svc := NewFeedbackService(repo, userRepo, validPeriodRepo(), nil)
 	result, err := svc.GetTeamFeedbacks(context.Background(), "team-1")
 	require.NoError(t, err)
 	assert.Empty(t, result)
@@ -481,7 +481,7 @@ func TestGetTeamFeedbacks_GetMembersError(t *testing.T) {
 		},
 	}
 
-	svc := NewFeedbackService(repo, userRepo, validPeriodRepo())
+	svc := NewFeedbackService(repo, userRepo, validPeriodRepo(), nil)
 	result, err := svc.GetTeamFeedbacks(context.Background(), "team-1")
 	assert.Error(t, err)
 	assert.Nil(t, result)
@@ -500,7 +500,7 @@ func TestGetTeamFeedbacks_GetFeedbacksError(t *testing.T) {
 		},
 	}
 
-	svc := NewFeedbackService(repo, userRepo, validPeriodRepo())
+	svc := NewFeedbackService(repo, userRepo, validPeriodRepo(), nil)
 	result, err := svc.GetTeamFeedbacks(context.Background(), "team-1")
 	assert.Error(t, err)
 	assert.Nil(t, result)
@@ -541,7 +541,7 @@ func TestGetTeamDashboard_Success(t *testing.T) {
 		},
 	}
 
-	svc := NewFeedbackService(repo, userRepo, validPeriodRepo())
+	svc := NewFeedbackService(repo, userRepo, validPeriodRepo(), nil)
 	result, err := svc.GetTeamDashboard(context.Background(), "team-1")
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -570,7 +570,7 @@ func TestGetTeamDashboard_NoFeedbacks(t *testing.T) {
 		},
 	}
 
-	svc := NewFeedbackService(repo, userRepo, validPeriodRepo())
+	svc := NewFeedbackService(repo, userRepo, validPeriodRepo(), nil)
 	result, err := svc.GetTeamDashboard(context.Background(), "team-1")
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -589,7 +589,7 @@ func TestGetTeamDashboard_GetMembersError(t *testing.T) {
 		},
 	}
 
-	svc := NewFeedbackService(repo, userRepo, validPeriodRepo())
+	svc := NewFeedbackService(repo, userRepo, validPeriodRepo(), nil)
 	result, err := svc.GetTeamDashboard(context.Background(), "team-1")
 	assert.Error(t, err)
 	assert.Nil(t, result)
@@ -636,7 +636,7 @@ func TestExportFeedbacksForUser_Success_Named(t *testing.T) {
 		},
 	}
 
-	svc := NewFeedbackService(repo, userRepo, validPeriodRepo())
+	svc := NewFeedbackService(repo, userRepo, validPeriodRepo(), nil)
 	result, err := svc.ExportFeedbacksForUser(context.Background(), "user-1")
 	require.NoError(t, err)
 	assert.Len(t, result, 2)
@@ -657,7 +657,7 @@ func TestExportFeedbacksForUser_Empty(t *testing.T) {
 		},
 	}
 
-	svc := NewFeedbackService(repo, validUserRepo(), validPeriodRepo())
+	svc := NewFeedbackService(repo, validUserRepo(), validPeriodRepo(), nil)
 	result, err := svc.ExportFeedbacksForUser(context.Background(), "user-1")
 	require.NoError(t, err)
 	assert.Empty(t, result)
@@ -670,7 +670,7 @@ func TestExportFeedbacksForUser_RepoError(t *testing.T) {
 		},
 	}
 
-	svc := NewFeedbackService(repo, validUserRepo(), validPeriodRepo())
+	svc := NewFeedbackService(repo, validUserRepo(), validPeriodRepo(), nil)
 	result, err := svc.ExportFeedbacksForUser(context.Background(), "user-1")
 	assert.Error(t, err)
 	assert.Nil(t, result)
@@ -690,7 +690,7 @@ func TestExportFeedbacksForUser_FiltersOldFeedbacks(t *testing.T) {
 		},
 	}
 
-	svc := NewFeedbackService(repo, validUserRepo(), validPeriodRepo())
+	svc := NewFeedbackService(repo, validUserRepo(), validPeriodRepo(), nil)
 	result, err := svc.ExportFeedbacksForUser(context.Background(), "user-1")
 	require.NoError(t, err)
 	assert.Len(t, result, 1)
@@ -720,7 +720,7 @@ func TestGetFeedbacksForMember_Success(t *testing.T) {
 		},
 	}
 
-	svc := NewFeedbackService(repo, userRepo, validPeriodRepo())
+	svc := NewFeedbackService(repo, userRepo, validPeriodRepo(), nil)
 	result, err := svc.GetFeedbacksForMember(context.Background(), "team-1", "member-1", 10, "")
 	require.NoError(t, err)
 	assert.Len(t, result, 1)
@@ -735,7 +735,7 @@ func TestGetFeedbacksForMember_MemberNotFound(t *testing.T) {
 		},
 	}
 
-	svc := NewFeedbackService(repo, userRepo, validPeriodRepo())
+	svc := NewFeedbackService(repo, userRepo, validPeriodRepo(), nil)
 	result, err := svc.GetFeedbacksForMember(context.Background(), "team-1", "member-1", 10, "")
 	assert.Error(t, err)
 	assert.Nil(t, result)
@@ -750,7 +750,7 @@ func TestGetFeedbacksForMember_MemberNotInTeam(t *testing.T) {
 		},
 	}
 
-	svc := NewFeedbackService(repo, userRepo, validPeriodRepo())
+	svc := NewFeedbackService(repo, userRepo, validPeriodRepo(), nil)
 	result, err := svc.GetFeedbacksForMember(context.Background(), "team-1", "member-1", 10, "")
 	assert.Error(t, err)
 	assert.Nil(t, result)
@@ -769,7 +769,7 @@ func TestGetFeedbacksForMember_RepoError(t *testing.T) {
 		},
 	}
 
-	svc := NewFeedbackService(repo, userRepo, validPeriodRepo())
+	svc := NewFeedbackService(repo, userRepo, validPeriodRepo(), nil)
 	result, err := svc.GetFeedbacksForMember(context.Background(), "team-1", "member-1", 10, "")
 	assert.Error(t, err)
 	assert.Nil(t, result)

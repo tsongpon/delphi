@@ -117,7 +117,7 @@ type mockFeedbackService struct {
 	GetTeamFeedbacksFn          func(ctx context.Context, teamID string) ([]*model.Feedback, error)
 	GetTeamDashboardFn          func(ctx context.Context, teamID string) (*service.TeamDashboard, error)
 	GetFeedbacksForMemberFn     func(ctx context.Context, teamID, memberID string, limit int, cursor string) ([]*model.Feedback, error)
-	ExportFeedbacksForUserFn    func(ctx context.Context, userID string) ([]*service.FeedbackExportEntry, error)
+	ExportFeedbacksForUserFn    func(ctx context.Context, userID string) ([]*model.FeedbackExportEntry, error)
 }
 
 func (m *mockFeedbackService) CreateFeedback(ctx context.Context, feedback *model.Feedback) (*model.Feedback, error) {
@@ -153,11 +153,47 @@ func (m *mockFeedbackService) GetFeedbacksForMember(ctx context.Context, teamID,
 	return nil, nil
 }
 
-func (m *mockFeedbackService) ExportFeedbacksForUser(ctx context.Context, userID string) ([]*service.FeedbackExportEntry, error) {
+func (m *mockFeedbackService) ExportFeedbacksForUser(ctx context.Context, userID string) ([]*model.FeedbackExportEntry, error) {
 	if m.ExportFeedbacksForUserFn != nil {
 		return m.ExportFeedbacksForUserFn(ctx, userID)
 	}
 	return nil, nil
+}
+
+// mockFeedbackDraftService implements FeedbackDraftService for handler tests.
+type mockFeedbackDraftService struct {
+	SaveDraftFn    func(ctx context.Context, draft *model.FeedbackDraft) (*model.FeedbackDraft, error)
+	GetDraftFn     func(ctx context.Context, reviewerID, revieweeID string) (*model.FeedbackDraft, error)
+	GetMyDraftsFn  func(ctx context.Context, reviewerID string) ([]*model.FeedbackDraft, error)
+	DeleteDraftFn  func(ctx context.Context, reviewerID, revieweeID string) error
+}
+
+func (m *mockFeedbackDraftService) SaveDraft(ctx context.Context, draft *model.FeedbackDraft) (*model.FeedbackDraft, error) {
+	if m.SaveDraftFn != nil {
+		return m.SaveDraftFn(ctx, draft)
+	}
+	return draft, nil
+}
+
+func (m *mockFeedbackDraftService) GetDraft(ctx context.Context, reviewerID, revieweeID string) (*model.FeedbackDraft, error) {
+	if m.GetDraftFn != nil {
+		return m.GetDraftFn(ctx, reviewerID, revieweeID)
+	}
+	return nil, nil
+}
+
+func (m *mockFeedbackDraftService) GetMyDrafts(ctx context.Context, reviewerID string) ([]*model.FeedbackDraft, error) {
+	if m.GetMyDraftsFn != nil {
+		return m.GetMyDraftsFn(ctx, reviewerID)
+	}
+	return []*model.FeedbackDraft{}, nil
+}
+
+func (m *mockFeedbackDraftService) DeleteDraft(ctx context.Context, reviewerID, revieweeID string) error {
+	if m.DeleteDraftFn != nil {
+		return m.DeleteDraftFn(ctx, reviewerID, revieweeID)
+	}
+	return nil
 }
 
 // mockFeedbackPeriodService implements FeedbackPeriodService for handler tests.

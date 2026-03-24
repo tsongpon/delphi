@@ -196,6 +196,55 @@ func toFeedbackPeriodResponse(p *model.FeedbackPeriod) feedbackPeriodResponse {
 	}
 }
 
+type saveDraftRequest struct {
+	ReviewerID         string `json:"reviewer_id"`
+	RevieweeID         string `json:"reviewee_id"`
+	CommunicationScore int    `json:"communication_score"`
+	LeadershipScore    int    `json:"leadership_score"`
+	TechnicalScore     int    `json:"technical_score"`
+	CollaborationScore int    `json:"collaboration_score"`
+	DeliveryScore      int    `json:"delivery_score"`
+	StrengthsComment   string `json:"strengths_comment"`
+	WeaknessesComment  string `json:"weaknesses_comment"`
+	Visibility         string `json:"visibility"`
+}
+
+type draftResponse struct {
+	ID                 string `json:"id"`
+	Period             string `json:"period"`
+	RevieweeID         string `json:"reviewee_id"`
+	ReviewerID         string `json:"reviewer_id"`
+	CommunicationScore int    `json:"communication_score"`
+	LeadershipScore    int    `json:"leadership_score"`
+	TechnicalScore     int    `json:"technical_score"`
+	CollaborationScore int    `json:"collaboration_score"`
+	DeliveryScore      int    `json:"delivery_score"`
+	StrengthsComment   string `json:"strengths_comment"`
+	WeaknessesComment  string `json:"weaknesses_comment"`
+	Visibility         string `json:"visibility"`
+	CreatedAt          string `json:"created_at"`
+	UpdatedAt          string `json:"updated_at"`
+}
+
+func toDraftResponse(d *model.FeedbackDraft) draftResponse {
+	return draftResponse{
+		ID:                 d.ID,
+		Period:             d.Period,
+		RevieweeID:         d.RevieweeID,
+		ReviewerID:         d.ReviewerID,
+		CommunicationScore: d.CommunicationScore,
+		LeadershipScore:    d.LeadershipScore,
+		TechnicalScore:     d.TechnicalScore,
+		CollaborationScore: d.CollaborationScore,
+		DeliveryScore:      d.DeliveryScore,
+		StrengthsComment:   d.StrengthsComment,
+		WeaknessesComment:  d.WeaknessesComment,
+		Visibility:         d.Visibility,
+		CreatedAt:          d.CreatedAt.Format(time.RFC3339),
+		UpdatedAt:          d.UpdatedAt.Format(time.RFC3339),
+	}
+}
+
 func toFeedbackResponse(f *model.Feedback) feedbackResponse {
 	return feedbackResponse{
 		ID:                 f.ID,

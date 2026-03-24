@@ -6,7 +6,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/tsongpon/delphi/internal/logger"
 	"github.com/tsongpon/delphi/internal/model"
+	"go.uber.org/zap"
 )
 
 type TeamService interface {
@@ -32,6 +34,7 @@ func (s *TeamServiceImpl) CreateTeam(ctx context.Context, name string) (*model.T
 
 	created, err := s.repo.CreateTeam(ctx, team)
 	if err != nil {
+		logger.Error("failed to create team", zap.Error(err))
 		return nil, fmt.Errorf("failed to create team: %w", err)
 	}
 

@@ -52,6 +52,13 @@ type InviteLinkRepository interface {
 	IncrementUsedCount(ctx context.Context, id string) error
 }
 
+type FeedbackDraftRepository interface {
+	UpsertDraft(ctx context.Context, draft *model.FeedbackDraft) (*model.FeedbackDraft, error)
+	GetDraft(ctx context.Context, reviewerID, revieweeID, period string) (*model.FeedbackDraft, error)
+	GetDraftsByReviewerID(ctx context.Context, reviewerID string) ([]*model.FeedbackDraft, error)
+	DeleteDraft(ctx context.Context, reviewerID, revieweeID, period string) error
+}
+
 type FeedbackPeriodRepository interface {
 	CreatePeriod(ctx context.Context, period *model.FeedbackPeriod) (*model.FeedbackPeriod, error)
 	GetActivePeriodForTeam(ctx context.Context, teamID string, now time.Time) (*model.FeedbackPeriod, error)

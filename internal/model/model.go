@@ -1,6 +1,8 @@
 package model
 
-import "time"
+import (
+	"time"
+)
 
 type Team struct {
 	ID        string
@@ -46,6 +48,23 @@ type Feedback struct {
 	UpdatedAt          time.Time
 }
 
+type FeedbackDraft struct {
+	ID                 string
+	Period             string
+	RevieweeID         string
+	ReviewerID         string
+	CommunicationScore int
+	LeadershipScore    int
+	TechnicalScore     int
+	CollaborationScore int
+	DeliveryScore      int
+	StrengthsComment   string
+	WeaknessesComment  string
+	Visibility         string
+	CreatedAt          time.Time
+	UpdatedAt          time.Time
+}
+
 type FeedbackPeriod struct {
 	ID        string
 	TeamID    string
@@ -55,4 +74,9 @@ type FeedbackPeriod struct {
 	CreatedBy string
 	CreatedAt time.Time
 	UpdatedAt time.Time
+}
+
+type FeedbackExportEntry struct {
+	Feedback     *Feedback
+	ReviewerName string
 }

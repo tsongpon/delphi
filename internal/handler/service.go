@@ -24,7 +24,7 @@ type FeedbackService interface {
 	GetTeamFeedbacks(ctx context.Context, teamID string) ([]*model.Feedback, error)
 	GetTeamDashboard(ctx context.Context, teamID string) (*service.TeamDashboard, error)
 	GetFeedbacksForMember(ctx context.Context, teamID, memberID string, limit int, cursor string) ([]*model.Feedback, error)
-	ExportFeedbacksForUser(ctx context.Context, userID string) ([]*service.FeedbackExportEntry, error)
+	ExportFeedbacksForUser(ctx context.Context, userID string) ([]*model.FeedbackExportEntry, error)
 }
 
 type TeamService interface {
@@ -48,6 +48,13 @@ type InviteLinkService interface {
 	DeleteLink(ctx context.Context, teamID, linkID string) error
 	ValidateToken(ctx context.Context, rawToken string) (*model.InviteLink, error)
 	IncrementUsedCount(ctx context.Context, id string) error
+}
+
+type FeedbackDraftService interface {
+	SaveDraft(ctx context.Context, draft *model.FeedbackDraft) (*model.FeedbackDraft, error)
+	GetDraft(ctx context.Context, reviewerID, revieweeID string) (*model.FeedbackDraft, error)
+	GetMyDrafts(ctx context.Context, reviewerID string) ([]*model.FeedbackDraft, error)
+	DeleteDraft(ctx context.Context, reviewerID, revieweeID string) error
 }
 
 type FeedbackPeriodService interface {

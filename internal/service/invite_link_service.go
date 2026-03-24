@@ -8,7 +8,9 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
+	"github.com/tsongpon/delphi/internal/logger"
 	"github.com/tsongpon/delphi/internal/model"
+	"go.uber.org/zap"
 )
 
 var ErrInviteLinkExpired = fmt.Errorf("invite link expired")
@@ -62,6 +64,7 @@ func (s *InviteLinkServiceImpl) CreateInviteLink(ctx context.Context, teamID, cr
 	rawToken := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	signedToken, err := rawToken.SignedString(s.jwtSecret)
 	if err != nil {
+		logger.Error("failed to sign invite token", zap.Error(err))
 		return nil, "", fmt.Errorf("failed to sign invite token: %w", err)
 	}
 
@@ -79,6 +82,7 @@ func (s *InviteLinkServiceImpl) CreateInviteLink(ctx context.Context, teamID, cr
 
 	created, err := s.repo.CreateInviteLink(ctx, link)
 	if err != nil {
+		logger.Error("failed to create invite link", zap.Error(err))
 		return nil, "", err
 	}
 
@@ -88,7 +92,12 @@ func (s *InviteLinkServiceImpl) CreateInviteLink(ctx context.Context, teamID, cr
 
 // ListLinks returns all invite links for a team.
 func (s *InviteLinkServiceImpl) ListLinks(ctx context.Context, teamID string) ([]*model.InviteLink, error) {
-	return s.repo.GetByTeamID(ctx, teamID)
+	links, err := s.repo.GetByTeamID(ctx, teamID)
+	if err != nil {
+		logger.Error("failed to list invite links", zap.Error(err))
+		return nil, err
+	}
+	return links, nil
 }
 
 // DeleteLink hard-deletes a specific invite link from Firestore.
@@ -96,12 +105,18 @@ func (s *InviteLinkServiceImpl) ListLinks(ctx context.Context, teamID string) ([
 func (s *InviteLinkServiceImpl) DeleteLink(ctx context.Context, teamID, linkID string) error {
 	link, err := s.repo.GetByID(ctx, linkID)
 	if err != nil {
+		logger.Error("failed to get invite link", zap.Error(err))
 		return err
 	}
 	if link == nil || link.TeamID != teamID {
 		return ErrInviteLinkNotFound
 	}
-	return s.repo.DeleteInviteLink(ctx, linkID)
+	err = s.repo.DeleteInviteLink(ctx, linkID)
+	if err != nil {
+		logger.Error("failed to delete invite link", zap.Error(err))
+		return err
+	}
+	return nil
 }
 
 // ValidateToken parses and validates an invite JWT, then checks Firestore that the record still exists.
@@ -147,5 +162,10 @@ func (s *InviteLinkServiceImpl) ValidateToken(ctx context.Context, rawToken stri
 
 // IncrementUsedCount increments the used_count of an invite link.
 func (s *InviteLinkServiceImpl) IncrementUsedCount(ctx context.Context, id string) error {
-	return s.repo.IncrementUsedCount(ctx, id)
+	err := s.repo.IncrementUsedCount(ctx, id)
+	if err != nil {
+		logger.Error("failed to increment used count", zap.Error(err))
+		return err
+	}
+	return nil
 }

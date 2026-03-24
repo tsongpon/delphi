@@ -59,11 +59,12 @@ type FeedbackServiceImpl struct {
 	repo       FeedbackRepository
 	userRepo   UserRepository
 	periodRepo FeedbackPeriodRepository
+	draftRepo  FeedbackDraftRepository
 }
 
 // NewFeedbackService creates a new FeedbackServiceImpl.
-func NewFeedbackService(repo FeedbackRepository, userRepo UserRepository, periodRepo FeedbackPeriodRepository) *FeedbackServiceImpl {
-	return &FeedbackServiceImpl{repo: repo, userRepo: userRepo, periodRepo: periodRepo}
+func NewFeedbackService(repo FeedbackRepository, userRepo UserRepository, periodRepo FeedbackPeriodRepository, draftRepo FeedbackDraftRepository) *FeedbackServiceImpl {
+	return &FeedbackServiceImpl{repo: repo, userRepo: userRepo, periodRepo: periodRepo, draftRepo: draftRepo}
 }
 
 // CreateFeedback validates users, looks up the active period, checks for duplicates, and persists the feedback.
@@ -84,6 +85,7 @@ func (s *FeedbackServiceImpl) CreateFeedback(ctx context.Context, feedback *mode
 	// Look up the active period for the reviewer's team
 	activePeriod, err := s.periodRepo.GetActivePeriodForTeam(ctx, reviewer.TeamID, now)
 	if err != nil {
+		logger.Error("failed to check active period", zap.Error(err))
 		return nil, fmt.Errorf("failed to check active period: %w", err)
 	}
 	if activePeriod == nil {
@@ -94,6 +96,7 @@ func (s *FeedbackServiceImpl) CreateFeedback(ctx context.Context, feedback *mode
 	// Check for duplicate
 	existing, err := s.repo.GetFeedback(ctx, feedback.ReviewerID, feedback.RevieweeID, feedback.Period)
 	if err != nil {
+		logger.Error("failed to check existing feedback", zap.Error(err))
 		return nil, fmt.Errorf("failed to check existing feedback: %w", err)
 	}
 	if existing != nil {
@@ -106,7 +109,15 @@ func (s *FeedbackServiceImpl) CreateFeedback(ctx context.Context, feedback *mode
 
 	created, err := s.repo.CreateFeedback(ctx, feedback)
 	if err != nil {
+		logger.Error("failed to create feedback", zap.Error(err))
 		return nil, fmt.Errorf("failed to create feedback: %w", err)
+	}
+
+	// Best-effort: delete any saved draft for this reviewer/reviewee/period
+	if s.draftRepo != nil {
+		if delErr := s.draftRepo.DeleteDraft(ctx, feedback.ReviewerID, feedback.RevieweeID, feedback.Period); delErr != nil {
+			logger.Error("failed to delete draft after feedback submit", zap.Error(delErr))
+		}
 	}
 
 	return created, nil
@@ -141,6 +152,7 @@ func (s *FeedbackServiceImpl) GetTeamFeedbacks(ctx context.Context, teamID strin
 
 	feedbacks, err := s.repo.GetFeedbacksByReviewerIDs(ctx, memberIDs)
 	if err != nil {
+		logger.Error("failed to get team feedbacks", zap.Error(err))
 		return nil, fmt.Errorf("failed to get team feedbacks: %w", err)
 	}
 
@@ -167,12 +179,14 @@ func (s *FeedbackServiceImpl) GetGivenFeedbacksForUser(ctx context.Context, user
 func (s *FeedbackServiceImpl) GetTeamDashboard(ctx context.Context, teamID string) (*TeamDashboard, error) {
 	members, err := s.userRepo.GetUsersByTeamID(ctx, teamID)
 	if err != nil {
+		logger.Error("failed to get team members", zap.Error(err))
 		return nil, fmt.Errorf("failed to get team members: %w", err)
 	}
 
 	feedbacks, err := s.GetTeamFeedbacks(ctx, teamID)
 	if err != nil {
-		return nil, err
+		logger.Error("failed to get team feedbacks", zap.Error(err))
+		return nil, fmt.Errorf("failed to get team feedbacks: %w", err)
 	}
 
 	type raw struct {
@@ -237,16 +251,9 @@ func (s *FeedbackServiceImpl) GetTeamDashboard(ctx context.Context, teamID strin
 	}, nil
 }
 
-// FeedbackExportEntry wraps a Feedback with the resolved reviewer display name.
-// ReviewerName is empty for anonymous feedback.
-type FeedbackExportEntry struct {
-	Feedback     *model.Feedback
-	ReviewerName string
-}
-
 // ExportFeedbacksForUser returns all feedbacks received by the user in the past 12 months,
 // with reviewer names resolved for named (non-anonymous) entries.
-func (s *FeedbackServiceImpl) ExportFeedbacksForUser(ctx context.Context, userID string) ([]*FeedbackExportEntry, error) {
+func (s *FeedbackServiceImpl) ExportFeedbacksForUser(ctx context.Context, userID string) ([]*model.FeedbackExportEntry, error) {
 	feedbacks, err := s.repo.GetFeedbacksByRevieweeID(ctx, userID, 1000, "")
 	if err != nil {
 		return nil, fmt.Errorf("failed to get feedbacks for export: %w", err)
@@ -272,9 +279,9 @@ func (s *FeedbackServiceImpl) ExportFeedbacksForUser(ctx context.Context, userID
 		}
 	}
 
-	result := make([]*FeedbackExportEntry, 0, len(filtered))
+	result := make([]*model.FeedbackExportEntry, 0, len(filtered))
 	for _, f := range filtered {
-		entry := &FeedbackExportEntry{Feedback: f}
+		entry := &model.FeedbackExportEntry{Feedback: f}
 		if f.Visibility == "named" {
 			entry.ReviewerName = nameByID[f.ReviewerID]
 		}

@@ -11,7 +11,6 @@ import (
 	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/tsongpon/delphi/internal/model"
-	"github.com/tsongpon/delphi/internal/service"
 )
 
 func setupExportPDFRoute(e *echo.Echo, h *FeedbackHandler, userID, name string) {
@@ -28,7 +27,7 @@ func setupExportPDFRoute(e *echo.Echo, h *FeedbackHandler, userID, name string) 
 
 func TestReviewerLabel(t *testing.T) {
 	t.Run("anonymous visibility returns Anonymous", func(t *testing.T) {
-		entry := &service.FeedbackExportEntry{
+		entry := &model.FeedbackExportEntry{
 			Feedback:     &model.Feedback{Visibility: "anonymous"},
 			ReviewerName: "John Doe",
 		}
@@ -36,7 +35,7 @@ func TestReviewerLabel(t *testing.T) {
 	})
 
 	t.Run("named visibility with reviewer name returns name", func(t *testing.T) {
-		entry := &service.FeedbackExportEntry{
+		entry := &model.FeedbackExportEntry{
 			Feedback:     &model.Feedback{Visibility: "named"},
 			ReviewerName: "Jane Smith",
 		}
@@ -44,7 +43,7 @@ func TestReviewerLabel(t *testing.T) {
 	})
 
 	t.Run("named visibility with empty reviewer name returns Named Reviewer", func(t *testing.T) {
-		entry := &service.FeedbackExportEntry{
+		entry := &model.FeedbackExportEntry{
 			Feedback:     &model.Feedback{Visibility: "named"},
 			ReviewerName: "",
 		}
@@ -76,7 +75,7 @@ func TestExportMyFeedbacksPDF_Unauthorized(t *testing.T) {
 
 func TestExportMyFeedbacksPDF_ServiceError(t *testing.T) {
 	mockSvc := &mockFeedbackService{
-		ExportFeedbacksForUserFn: func(_ context.Context, _ string) ([]*service.FeedbackExportEntry, error) {
+		ExportFeedbacksForUserFn: func(_ context.Context, _ string) ([]*model.FeedbackExportEntry, error) {
 			return nil, fmt.Errorf("database error")
 		},
 	}
@@ -94,9 +93,9 @@ func TestExportMyFeedbacksPDF_ServiceError(t *testing.T) {
 
 func TestExportMyFeedbacksPDF_Success_Empty(t *testing.T) {
 	mockSvc := &mockFeedbackService{
-		ExportFeedbacksForUserFn: func(_ context.Context, userID string) ([]*service.FeedbackExportEntry, error) {
+		ExportFeedbacksForUserFn: func(_ context.Context, userID string) ([]*model.FeedbackExportEntry, error) {
 			assert.Equal(t, "user-123", userID)
-			return []*service.FeedbackExportEntry{}, nil
+			return []*model.FeedbackExportEntry{}, nil
 		},
 	}
 	h := NewFeedbackHandler(mockSvc)
@@ -115,7 +114,7 @@ func TestExportMyFeedbacksPDF_Success_Empty(t *testing.T) {
 
 func TestExportMyFeedbacksPDF_Success_WithFeedbacks(t *testing.T) {
 	now := time.Now()
-	entries := []*service.FeedbackExportEntry{
+	entries := []*model.FeedbackExportEntry{
 		{
 			Feedback: &model.Feedback{
 				ID:                 "fb-1",
@@ -155,7 +154,7 @@ func TestExportMyFeedbacksPDF_Success_WithFeedbacks(t *testing.T) {
 	}
 
 	mockSvc := &mockFeedbackService{
-		ExportFeedbacksForUserFn: func(_ context.Context, _ string) ([]*service.FeedbackExportEntry, error) {
+		ExportFeedbacksForUserFn: func(_ context.Context, _ string) ([]*model.FeedbackExportEntry, error) {
 			return entries, nil
 		},
 	}
@@ -176,8 +175,8 @@ func TestExportMyFeedbacksPDF_Success_WithFeedbacks(t *testing.T) {
 
 func TestExportMyFeedbacksPDF_Success_NoUserName(t *testing.T) {
 	mockSvc := &mockFeedbackService{
-		ExportFeedbacksForUserFn: func(_ context.Context, _ string) ([]*service.FeedbackExportEntry, error) {
-			return []*service.FeedbackExportEntry{}, nil
+		ExportFeedbacksForUserFn: func(_ context.Context, _ string) ([]*model.FeedbackExportEntry, error) {
+			return []*model.FeedbackExportEntry{}, nil
 		},
 	}
 	h := NewFeedbackHandler(mockSvc)
@@ -196,9 +195,9 @@ func TestExportMyFeedbacksPDF_Success_NoUserName(t *testing.T) {
 func TestExportMyFeedbacksPDF_Success_ManyFeedbacks(t *testing.T) {
 	now := time.Now()
 	// Create enough feedbacks to trigger page break
-	entries := make([]*service.FeedbackExportEntry, 20)
+	entries := make([]*model.FeedbackExportEntry, 20)
 	for i := range entries {
-		entries[i] = &service.FeedbackExportEntry{
+		entries[i] = &model.FeedbackExportEntry{
 			Feedback: &model.Feedback{
 				ID:                 fmt.Sprintf("fb-%d", i),
 				Period:             fmt.Sprintf("2025-H%d", (i%2)+1),
@@ -219,7 +218,7 @@ func TestExportMyFeedbacksPDF_Success_ManyFeedbacks(t *testing.T) {
 	}
 
 	mockSvc := &mockFeedbackService{
-		ExportFeedbacksForUserFn: func(_ context.Context, _ string) ([]*service.FeedbackExportEntry, error) {
+		ExportFeedbacksForUserFn: func(_ context.Context, _ string) ([]*model.FeedbackExportEntry, error) {
 			return entries, nil
 		},
 	}

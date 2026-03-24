@@ -63,15 +63,33 @@ func (s *FeedbackPeriodServiceImpl) CreatePeriod(ctx context.Context, period *mo
 
 // GetActivePeriodForTeam returns the currently active period for the team, or nil if none.
 func (s *FeedbackPeriodServiceImpl) GetActivePeriodForTeam(ctx context.Context, teamID string) (*model.FeedbackPeriod, error) {
-	return s.repo.GetActivePeriodForTeam(ctx, teamID, time.Now())
+	period, err := s.repo.GetActivePeriodForTeam(ctx, teamID, time.Now())
+	if err != nil {
+		logger.Error("failed to get active period", zap.Error(err))
+		return nil, fmt.Errorf("failed to get active period: %w", err)
+	}
+
+	return period, nil
 }
 
 // ListPeriodsForTeam returns all periods for the team, newest first.
 func (s *FeedbackPeriodServiceImpl) ListPeriodsForTeam(ctx context.Context, teamID string) ([]*model.FeedbackPeriod, error) {
-	return s.repo.ListPeriodsForTeam(ctx, teamID)
+	periods, err := s.repo.ListPeriodsForTeam(ctx, teamID)
+	if err != nil {
+		logger.Error("failed to list periods", zap.Error(err))
+		return nil, fmt.Errorf("failed to list periods: %w", err)
+	}
+
+	return periods, nil
 }
 
 // DeletePeriod deletes a period by ID, verifying team ownership.
 func (s *FeedbackPeriodServiceImpl) DeletePeriod(ctx context.Context, teamID, periodID string) error {
-	return s.repo.DeletePeriod(ctx, teamID, periodID)
+	err := s.repo.DeletePeriod(ctx, teamID, periodID)
+	if err != nil {
+		logger.Error("failed to delete period", zap.Error(err))
+		return fmt.Errorf("failed to delete period: %w", err)
+	}
+
+	return nil
 }

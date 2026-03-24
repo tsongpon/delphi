@@ -12,7 +12,7 @@ import (
 
 	"github.com/jung-kurt/gofpdf"
 	"github.com/labstack/echo/v5"
-	"github.com/tsongpon/delphi/internal/service"
+	"github.com/tsongpon/delphi/internal/model"
 )
 
 //go:embed fonts/Sarabun-Regular.ttf
@@ -229,7 +229,7 @@ func (h *FeedbackHandler) ExportMyFeedbacksPDF(c *echo.Context) error {
 
 // reviewerLabel returns the display string for the reviewer column.
 // Named feedback shows the reviewer's name; anonymous shows "Anonymous".
-func reviewerLabel(e *service.FeedbackExportEntry) string {
+func reviewerLabel(e *model.FeedbackExportEntry) string {
 	if e.Feedback.Visibility == "anonymous" {
 		return "Anonymous"
 	}

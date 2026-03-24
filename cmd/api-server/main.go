@@ -55,6 +55,7 @@ func main() {
 
 	userRepo := repository.NewUserFirestoreRepository(firestoreClient)
 	feedbackRepo := repository.NewFeedbackFirestoreRepository(firestoreClient)
+	feedbackDraftRepo := repository.NewFeedbackDraftFirestoreRepository(firestoreClient)
 	tokenRepo := repository.NewTokenFirestoreRepository(firestoreClient)
 	teamRepo := repository.NewTeamFirestoreRepository(firestoreClient)
 	inviteLinkRepo := repository.NewInviteLinkFirestoreRepository(firestoreClient)
@@ -70,7 +71,8 @@ func main() {
 	}
 
 	userService := service.NewUserService(userRepo, teamRepo, jwtSecret)
-	feedbackService := service.NewFeedbackService(feedbackRepo, userRepo, feedbackPeriodRepo)
+	feedbackService := service.NewFeedbackService(feedbackRepo, userRepo, feedbackPeriodRepo, feedbackDraftRepo)
+	feedbackDraftService := service.NewFeedbackDraftService(feedbackDraftRepo, userRepo, feedbackPeriodRepo, feedbackRepo)
 	passwordResetService := service.NewPasswordResetService(tokenRepo, userRepo, appBaseURL)
 	teamService := service.NewTeamService(teamRepo)
 	inviteLinkService := service.NewInviteLinkService(inviteLinkRepo, teamRepo, jwtSecret, appBaseURL)
@@ -81,6 +83,7 @@ func main() {
 	authHandler := handler.NewAuthHandler(userService, inviteLinkService)
 	userHandler := handler.NewUserHandler(userService)
 	feedbackHandler := handler.NewFeedbackHandler(feedbackService)
+	feedbackDraftHandler := handler.NewFeedbackDraftHandler(feedbackDraftService)
 	passwordResetHandler := handler.NewPasswordResetHandler(passwordResetService)
 	adminHandler := handler.NewAdminHandler(userService, teamService)
 	inviteLinkHandler := handler.NewInviteLinkHandler(inviteLinkService)
@@ -104,6 +107,10 @@ func main() {
 	// Protected routes (JWT required)
 	api := e.Group("", custommiddleware.JWTAuth(jwtSecret))
 	api.GET("/me/teammates", userHandler.GetTeammates)
+	api.GET("/me/drafts", feedbackDraftHandler.ListDrafts)
+	api.GET("/me/drafts/:revieweeId", feedbackDraftHandler.GetDraft)
+	api.PUT("/me/drafts/:revieweeId", feedbackDraftHandler.SaveDraft)
+	api.DELETE("/me/drafts/:revieweeId", feedbackDraftHandler.DeleteDraft)
 	api.GET("/me/feedbacks", feedbackHandler.GetMyFeedbacks)
 	api.GET("/me/feedbacks/export", feedbackHandler.ExportMyFeedbacksPDF)
 	api.GET("/me/given-feedbacks", feedbackHandler.GetMyGivenFeedbacks)
