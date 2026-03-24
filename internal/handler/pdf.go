@@ -164,17 +164,12 @@ func (h *FeedbackHandler) ExportMyFeedbacksPDF(c *echo.Context) error {
 		// Entry header: show reviewer name for named feedback, "Anonymous" otherwise.
 		reviewer := reviewerLabel(e)
 
-		period := f.Period
-		if parts := splitPeriod(f.Period); parts != "" {
-			period = parts
-		}
-
 		pdf.SetFillColor(245, 245, 245)
 		pdf.SetFont("Sarabun", "B", 10)
 		pdf.SetTextColor(30, 30, 30)
 		pdf.CellFormat(contentW, 7,
 			fmt.Sprintf("%d.  %s  \u2022  %s  \u2022  %s",
-				i+1, period, reviewer, f.CreatedAt.Format("Jan 2, 2006")),
+				i+1, f.Period, reviewer, f.CreatedAt.Format("Jan 2, 2006")),
 			"", 1, "L", true, 0, "")
 		pdf.Ln(1)
 
@@ -244,11 +239,3 @@ func reviewerLabel(e *service.FeedbackExportEntry) string {
 	return "Named Reviewer"
 }
 
-// splitPeriod converts "1-2026" → "Q1 2026".
-func splitPeriod(period string) string {
-	var q, year int
-	if _, err := fmt.Sscanf(period, "%d-%d", &q, &year); err != nil {
-		return ""
-	}
-	return fmt.Sprintf("Q%d %d", q, year)
-}

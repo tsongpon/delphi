@@ -22,6 +22,8 @@ var (
 	ErrRevieweeNotFound = errors.New("reviewee not found")
 	// ErrMemberNotInTeam is returned when the member does not belong to the given team.
 	ErrMemberNotInTeam = errors.New("member does not belong to this team")
+	// ErrNoActivePeriod is returned when there is no active feedback period for the team.
+	ErrNoActivePeriod = errors.New("no active feedback period")
 )
 
 // TeamDashboard holds aggregated team performance data.
@@ -54,19 +56,21 @@ func round2(v float64) float64 {
 
 // FeedbackServiceImpl implements handler.FeedbackService.
 type FeedbackServiceImpl struct {
-	repo     FeedbackRepository
-	userRepo UserRepository
+	repo       FeedbackRepository
+	userRepo   UserRepository
+	periodRepo FeedbackPeriodRepository
 }
 
 // NewFeedbackService creates a new FeedbackServiceImpl.
-func NewFeedbackService(repo FeedbackRepository, userRepo UserRepository) *FeedbackServiceImpl {
-	return &FeedbackServiceImpl{repo: repo, userRepo: userRepo}
+func NewFeedbackService(repo FeedbackRepository, userRepo UserRepository, periodRepo FeedbackPeriodRepository) *FeedbackServiceImpl {
+	return &FeedbackServiceImpl{repo: repo, userRepo: userRepo, periodRepo: periodRepo}
 }
 
-// CreateFeedback validates users, calculates the period, checks for duplicates, and persists the feedback.
+// CreateFeedback validates users, looks up the active period, checks for duplicates, and persists the feedback.
 func (s *FeedbackServiceImpl) CreateFeedback(ctx context.Context, feedback *model.Feedback) (*model.Feedback, error) {
-	// Validate reviewer exists
-	if _, err := s.userRepo.GetUserByID(ctx, feedback.ReviewerID); err != nil {
+	// Validate reviewer exists and get team ID for period lookup
+	reviewer, err := s.userRepo.GetUserByID(ctx, feedback.ReviewerID)
+	if err != nil {
 		return nil, ErrReviewerNotFound
 	}
 
@@ -77,9 +81,15 @@ func (s *FeedbackServiceImpl) CreateFeedback(ctx context.Context, feedback *mode
 
 	now := time.Now()
 
-	// Calculate period: quarter-year (e.g. "1-2026" for Q1 2026)
-	quarter := (int(now.Month())-1)/3 + 1
-	feedback.Period = fmt.Sprintf("%d-%d", quarter, now.Year())
+	// Look up the active period for the reviewer's team
+	activePeriod, err := s.periodRepo.GetActivePeriodForTeam(ctx, reviewer.TeamID, now)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check active period: %w", err)
+	}
+	if activePeriod == nil {
+		return nil, ErrNoActivePeriod
+	}
+	feedback.Period = activePeriod.Name
 
 	// Check for duplicate
 	existing, err := s.repo.GetFeedback(ctx, feedback.ReviewerID, feedback.RevieweeID, feedback.Period)

@@ -58,6 +58,7 @@ func main() {
 	tokenRepo := repository.NewTokenFirestoreRepository(firestoreClient)
 	teamRepo := repository.NewTeamFirestoreRepository(firestoreClient)
 	inviteLinkRepo := repository.NewInviteLinkFirestoreRepository(firestoreClient)
+	feedbackPeriodRepo := repository.NewFeedbackPeriodFirestoreRepository(firestoreClient)
 
 	resendAPIKey := os.Getenv("RESEND_API_KEY")
 	if resendAPIKey == "" {
@@ -69,12 +70,13 @@ func main() {
 	}
 
 	userService := service.NewUserService(userRepo, teamRepo, jwtSecret)
-	feedbackService := service.NewFeedbackService(feedbackRepo, userRepo)
+	feedbackService := service.NewFeedbackService(feedbackRepo, userRepo, feedbackPeriodRepo)
 	passwordResetService := service.NewPasswordResetService(tokenRepo, userRepo, appBaseURL)
 	teamService := service.NewTeamService(teamRepo)
 	inviteLinkService := service.NewInviteLinkService(inviteLinkRepo, teamRepo, jwtSecret, appBaseURL)
 	emailSender := repository.NewResendEmailSender(resendAPIKey, resendFromEmail, appBaseURL)
 	notifyService := service.NewNotifyService(userRepo, feedbackRepo, emailSender)
+	feedbackPeriodService := service.NewFeedbackPeriodService(feedbackPeriodRepo)
 
 	authHandler := handler.NewAuthHandler(userService, inviteLinkService)
 	userHandler := handler.NewUserHandler(userService)
@@ -83,6 +85,7 @@ func main() {
 	adminHandler := handler.NewAdminHandler(userService, teamService)
 	inviteLinkHandler := handler.NewInviteLinkHandler(inviteLinkService)
 	notifyHandler := handler.NewNotifyHandler(notifyService)
+	feedbackPeriodHandler := handler.NewFeedbackPeriodHandler(feedbackPeriodService)
 
 	e := echo.New()
 	e.Logger = logger.Slog()
@@ -111,6 +114,10 @@ func main() {
 	api.POST("/teams/:teamId/invite-links", inviteLinkHandler.CreateInviteLink, custommiddleware.RequireRole("manager"))
 	api.GET("/teams/:teamId/invite-links", inviteLinkHandler.ListInviteLinks, custommiddleware.RequireRole("manager"))
 	api.DELETE("/teams/:teamId/invite-links/:linkId", inviteLinkHandler.RevokeInviteLink, custommiddleware.RequireRole("manager"))
+	api.POST("/teams/:teamId/periods", feedbackPeriodHandler.CreatePeriod, custommiddleware.RequireRole("manager"))
+	api.GET("/teams/:teamId/periods", feedbackPeriodHandler.ListPeriods, custommiddleware.RequireRole("manager"))
+	api.DELETE("/teams/:teamId/periods/:periodId", feedbackPeriodHandler.DeletePeriod, custommiddleware.RequireRole("manager"))
+	api.GET("/teams/:teamId/periods/active", feedbackPeriodHandler.GetActivePeriod)
 
 	// Admin routes (ADMIN_SECRET header required)
 	admin := e.Group("/admin", custommiddleware.AdminAuth(adminSecret))

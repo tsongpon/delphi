@@ -159,3 +159,39 @@ func (m *mockFeedbackService) ExportFeedbacksForUser(ctx context.Context, userID
 	}
 	return nil, nil
 }
+
+// mockFeedbackPeriodService implements FeedbackPeriodService for handler tests.
+type mockFeedbackPeriodService struct {
+	CreatePeriodFn            func(ctx context.Context, period *model.FeedbackPeriod) (*model.FeedbackPeriod, error)
+	GetActivePeriodForTeamFn  func(ctx context.Context, teamID string) (*model.FeedbackPeriod, error)
+	ListPeriodsForTeamFn      func(ctx context.Context, teamID string) ([]*model.FeedbackPeriod, error)
+	DeletePeriodFn            func(ctx context.Context, teamID, periodID string) error
+}
+
+func (m *mockFeedbackPeriodService) CreatePeriod(ctx context.Context, period *model.FeedbackPeriod) (*model.FeedbackPeriod, error) {
+	if m.CreatePeriodFn != nil {
+		return m.CreatePeriodFn(ctx, period)
+	}
+	return period, nil
+}
+
+func (m *mockFeedbackPeriodService) GetActivePeriodForTeam(ctx context.Context, teamID string) (*model.FeedbackPeriod, error) {
+	if m.GetActivePeriodForTeamFn != nil {
+		return m.GetActivePeriodForTeamFn(ctx, teamID)
+	}
+	return nil, nil
+}
+
+func (m *mockFeedbackPeriodService) ListPeriodsForTeam(ctx context.Context, teamID string) ([]*model.FeedbackPeriod, error) {
+	if m.ListPeriodsForTeamFn != nil {
+		return m.ListPeriodsForTeamFn(ctx, teamID)
+	}
+	return []*model.FeedbackPeriod{}, nil
+}
+
+func (m *mockFeedbackPeriodService) DeletePeriod(ctx context.Context, teamID, periodID string) error {
+	if m.DeletePeriodFn != nil {
+		return m.DeletePeriodFn(ctx, teamID, periodID)
+	}
+	return nil
+}

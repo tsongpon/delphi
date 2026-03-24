@@ -23,33 +23,6 @@ func setupExportPDFRoute(e *echo.Echo, h *FeedbackHandler, userID, name string) 
 }
 
 // ---------------------------------------------------------------------------
-// splitPeriod unit tests
-// ---------------------------------------------------------------------------
-
-func TestSplitPeriod(t *testing.T) {
-	tests := []struct {
-		input    string
-		expected string
-	}{
-		{"1-2026", "Q1 2026"},
-		{"2-2025", "Q2 2025"},
-		{"3-2024", "Q3 2024"},
-		{"4-2023", "Q4 2023"},
-		{"invalid", ""},
-		{"", ""},
-		{"1-", ""},
-		{"-2026", ""},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.input, func(t *testing.T) {
-			result := splitPeriod(tt.input)
-			assert.Equal(t, tt.expected, result)
-		})
-	}
-}
-
-// ---------------------------------------------------------------------------
 // reviewerLabel unit tests
 // ---------------------------------------------------------------------------
 
@@ -146,7 +119,7 @@ func TestExportMyFeedbacksPDF_Success_WithFeedbacks(t *testing.T) {
 		{
 			Feedback: &model.Feedback{
 				ID:                 "fb-1",
-				Period:             "1-2026",
+				Period:             "2026-H1",
 				ReviewerID:         "reviewer-1",
 				RevieweeID:         "user-123",
 				CommunicationScore: 5,
@@ -164,7 +137,7 @@ func TestExportMyFeedbacksPDF_Success_WithFeedbacks(t *testing.T) {
 		{
 			Feedback: &model.Feedback{
 				ID:                 "fb-2",
-				Period:             "1-2026",
+				Period:             "2026-H1",
 				ReviewerID:         "reviewer-2",
 				RevieweeID:         "user-123",
 				CommunicationScore: 4,
@@ -228,7 +201,7 @@ func TestExportMyFeedbacksPDF_Success_ManyFeedbacks(t *testing.T) {
 		entries[i] = &service.FeedbackExportEntry{
 			Feedback: &model.Feedback{
 				ID:                 fmt.Sprintf("fb-%d", i),
-				Period:             fmt.Sprintf("%d-2025", (i%4)+1),
+				Period:             fmt.Sprintf("2025-H%d", (i%2)+1),
 				ReviewerID:         fmt.Sprintf("reviewer-%d", i),
 				RevieweeID:         "user-123",
 				CommunicationScore: 4,

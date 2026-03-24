@@ -49,3 +49,10 @@ type InviteLinkService interface {
 	ValidateToken(ctx context.Context, rawToken string) (*model.InviteLink, error)
 	IncrementUsedCount(ctx context.Context, id string) error
 }
+
+type FeedbackPeriodService interface {
+	CreatePeriod(ctx context.Context, period *model.FeedbackPeriod) (*model.FeedbackPeriod, error)
+	GetActivePeriodForTeam(ctx context.Context, teamID string) (*model.FeedbackPeriod, error)
+	ListPeriodsForTeam(ctx context.Context, teamID string) ([]*model.FeedbackPeriod, error)
+	DeletePeriod(ctx context.Context, teamID, periodID string) error
+}

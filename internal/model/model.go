@@ -45,3 +45,14 @@ type Feedback struct {
 	CreatedAt          time.Time
 	UpdatedAt          time.Time
 }
+
+type FeedbackPeriod struct {
+	ID        string
+	TeamID    string
+	Name      string
+	StartDate time.Time
+	EndDate   time.Time
+	CreatedBy string
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}

@@ -166,6 +166,36 @@ func toTeamResponse(t *model.Team) teamResponse {
 	}
 }
 
+type createFeedbackPeriodRequest struct {
+	Name      string `json:"name"`
+	StartDate string `json:"start_date"` // RFC3339
+	EndDate   string `json:"end_date"`   // RFC3339
+}
+
+type feedbackPeriodResponse struct {
+	ID        string `json:"id"`
+	TeamID    string `json:"team_id"`
+	Name      string `json:"name"`
+	StartDate string `json:"start_date"`
+	EndDate   string `json:"end_date"`
+	CreatedBy string `json:"created_by"`
+	CreatedAt string `json:"created_at"`
+	UpdatedAt string `json:"updated_at"`
+}
+
+func toFeedbackPeriodResponse(p *model.FeedbackPeriod) feedbackPeriodResponse {
+	return feedbackPeriodResponse{
+		ID:        p.ID,
+		TeamID:    p.TeamID,
+		Name:      p.Name,
+		StartDate: p.StartDate.Format(time.RFC3339),
+		EndDate:   p.EndDate.Format(time.RFC3339),
+		CreatedBy: p.CreatedBy,
+		CreatedAt: p.CreatedAt.Format(time.RFC3339),
+		UpdatedAt: p.UpdatedAt.Format(time.RFC3339),
+	}
+}
+
 func toFeedbackResponse(f *model.Feedback) feedbackResponse {
 	return feedbackResponse{
 		ID:                 f.ID,

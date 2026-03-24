@@ -61,6 +61,9 @@ func (h *FeedbackHandler) CreateFeedback(c *echo.Context) error {
 		if errors.Is(err, service.ErrReviewerNotFound) || errors.Is(err, service.ErrRevieweeNotFound) {
 			return c.JSON(http.StatusNotFound, map[string]string{"error": err.Error()})
 		}
+		if errors.Is(err, service.ErrNoActivePeriod) {
+			return c.JSON(http.StatusForbidden, map[string]string{"error": err.Error()})
+		}
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to create feedback"})
 	}
 

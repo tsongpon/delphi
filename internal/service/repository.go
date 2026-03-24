@@ -51,3 +51,10 @@ type InviteLinkRepository interface {
 	DeleteInviteLink(ctx context.Context, id string) error
 	IncrementUsedCount(ctx context.Context, id string) error
 }
+
+type FeedbackPeriodRepository interface {
+	CreatePeriod(ctx context.Context, period *model.FeedbackPeriod) (*model.FeedbackPeriod, error)
+	GetActivePeriodForTeam(ctx context.Context, teamID string, now time.Time) (*model.FeedbackPeriod, error)
+	ListPeriodsForTeam(ctx context.Context, teamID string) ([]*model.FeedbackPeriod, error)
+	DeletePeriod(ctx context.Context, teamID, periodID string) error
+}
