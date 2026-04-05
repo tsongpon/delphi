@@ -42,6 +42,7 @@ type FeedbackRepository interface {
 
 type EmailSender interface {
 	SendFeedbackDigest(ctx context.Context, toName, toEmail string, count int) error
+	SendPasswordResetEmail(ctx context.Context, toName, toEmail, resetLink string) error
 }
 
 type InviteLinkRepository interface {

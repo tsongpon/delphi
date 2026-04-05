@@ -31,6 +31,10 @@ func (m *mockEmailSender) SendFeedbackDigest(ctx context.Context, toName, toEmai
 	return nil
 }
 
+func (m *mockEmailSender) SendPasswordResetEmail(ctx context.Context, toName, toEmail, resetLink string) error {
+	return nil
+}
+
 // helpers
 
 var (

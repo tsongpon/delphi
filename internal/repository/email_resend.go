@@ -17,7 +17,11 @@ var _ service.EmailSender = (*ResendEmailSender)(nil)
 //go:embed templates/feedback_digest.html
 var feedbackDigestTemplate string
 
+//go:embed templates/password_reset.html
+var passwordResetTemplate string
+
 var digestTmpl = template.Must(template.New("digest").Parse(feedbackDigestTemplate))
+var passwordResetTmpl = template.Must(template.New("passwordReset").Parse(passwordResetTemplate))
 
 // ResendEmailSender sends transactional emails via the Resend API.
 type ResendEmailSender struct {
@@ -67,6 +71,35 @@ func (s *ResendEmailSender) SendFeedbackDigest(ctx context.Context, toName, toEm
 
 	if _, err := s.client.Emails.Send(params); err != nil {
 		return fmt.Errorf("failed to send feedback digest email to %s: %w", toEmail, err)
+	}
+
+	return nil
+}
+
+// SendPasswordResetEmail emails toEmail a link to reset their password.
+func (s *ResendEmailSender) SendPasswordResetEmail(ctx context.Context, toName, toEmail, resetLink string) error {
+	data := struct {
+		Name      string
+		ResetLink string
+	}{
+		Name:      toName,
+		ResetLink: resetLink,
+	}
+
+	var buf bytes.Buffer
+	if err := passwordResetTmpl.Execute(&buf, data); err != nil {
+		return fmt.Errorf("failed to render password reset email template: %w", err)
+	}
+
+	params := &resend.SendEmailRequest{
+		From:    s.fromEmail,
+		To:      []string{toEmail},
+		Subject: "Reset your password — Feedback360",
+		Html:    buf.String(),
+	}
+
+	if _, err := s.client.Emails.Send(params); err != nil {
+		return fmt.Errorf("failed to send password reset email to %s: %w", toEmail, err)
 	}
 
 	return nil

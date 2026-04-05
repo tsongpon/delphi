@@ -70,13 +70,14 @@ func main() {
 		log.Fatal("RESEND_FROM_EMAIL environment variable is required")
 	}
 
+	emailSender := repository.NewResendEmailSender(resendAPIKey, resendFromEmail, appBaseURL)
+
 	userService := service.NewUserService(userRepo, teamRepo, jwtSecret)
 	feedbackService := service.NewFeedbackService(feedbackRepo, userRepo, feedbackPeriodRepo, feedbackDraftRepo)
 	feedbackDraftService := service.NewFeedbackDraftService(feedbackDraftRepo, userRepo, feedbackPeriodRepo, feedbackRepo)
-	passwordResetService := service.NewPasswordResetService(tokenRepo, userRepo, appBaseURL)
+	passwordResetService := service.NewPasswordResetService(tokenRepo, userRepo, emailSender, appBaseURL)
 	teamService := service.NewTeamService(teamRepo)
 	inviteLinkService := service.NewInviteLinkService(inviteLinkRepo, teamRepo, jwtSecret, appBaseURL)
-	emailSender := repository.NewResendEmailSender(resendAPIKey, resendFromEmail, appBaseURL)
 	notifyService := service.NewNotifyService(userRepo, feedbackRepo, emailSender)
 	feedbackPeriodService := service.NewFeedbackPeriodService(feedbackPeriodRepo)
 
@@ -101,6 +102,7 @@ func main() {
 	})
 	e.POST("/register", authHandler.RegisterUser)
 	e.POST("/login", authHandler.LoginUser)
+	e.POST("/forgot-password", passwordResetHandler.ForgotPassword)
 	e.POST("/reset-password", passwordResetHandler.ResetPassword)
 	e.GET("/invite-links/validate", inviteLinkHandler.ValidateInviteToken)
 

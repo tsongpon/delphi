@@ -20,15 +20,16 @@ var (
 
 const resetTokenExpiry = time.Hour
 
-// PasswordResetServiceImpl handles admin-initiated password reset links.
+// PasswordResetServiceImpl handles password reset links.
 type PasswordResetServiceImpl struct {
-	tokenRepo TokenRepository
-	userRepo  UserRepository
-	baseURL   string
+	tokenRepo   TokenRepository
+	userRepo    UserRepository
+	emailSender EmailSender
+	baseURL     string
 }
 
-func NewPasswordResetService(tokenRepo TokenRepository, userRepo UserRepository, baseURL string) *PasswordResetServiceImpl {
-	return &PasswordResetServiceImpl{tokenRepo: tokenRepo, userRepo: userRepo, baseURL: baseURL}
+func NewPasswordResetService(tokenRepo TokenRepository, userRepo UserRepository, emailSender EmailSender, baseURL string) *PasswordResetServiceImpl {
+	return &PasswordResetServiceImpl{tokenRepo: tokenRepo, userRepo: userRepo, emailSender: emailSender, baseURL: baseURL}
 }
 
 // GenerateResetLink creates a one-time reset token for the given userID and returns the reset URL.
@@ -57,6 +58,27 @@ func (s *PasswordResetServiceImpl) GenerateResetLink(ctx context.Context, userID
 
 	resetLink := fmt.Sprintf("%s/reset-password?token=%s", s.baseURL, rawToken)
 	return resetLink, expiresAt, nil
+}
+
+// ForgotPassword looks up a user by email, generates a reset token, and sends a reset email.
+// Returns nil even if the email is not found (to prevent user enumeration).
+func (s *PasswordResetServiceImpl) ForgotPassword(ctx context.Context, email string) error {
+	user, err := s.userRepo.GetUserByEmail(ctx, email)
+	if err != nil || user == nil {
+		// Silently return to prevent email enumeration
+		return nil
+	}
+
+	resetLink, _, err := s.GenerateResetLink(ctx, user.ID)
+	if err != nil {
+		return fmt.Errorf("failed to generate reset link: %w", err)
+	}
+
+	if err := s.emailSender.SendPasswordResetEmail(ctx, user.Name, user.Email, resetLink); err != nil {
+		return fmt.Errorf("failed to send password reset email: %w", err)
+	}
+
+	return nil
 }
 
 // ResetPassword validates the token and updates the user's password.

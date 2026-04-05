@@ -34,6 +34,7 @@ type TeamService interface {
 type PasswordResetService interface {
 	GenerateResetLink(ctx context.Context, userID string) (resetLink string, expiresAt time.Time, err error)
 	ResetPassword(ctx context.Context, rawToken, newPassword string) error
+	ForgotPassword(ctx context.Context, email string) error
 }
 
 type NotifyService interface {

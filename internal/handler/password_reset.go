@@ -40,6 +40,27 @@ func (h *PasswordResetHandler) GenerateResetLink(c *echo.Context) error {
 	})
 }
 
+// ForgotPassword is a public endpoint that sends a password reset email.
+// POST /forgot-password
+func (h *PasswordResetHandler) ForgotPassword(c *echo.Context) error {
+	var req forgotPasswordRequest
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid request body"})
+	}
+
+	if req.Email == "" {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "email is required"})
+	}
+
+	ctx := c.Request().Context()
+	if err := h.PasswordResetService.ForgotPassword(ctx, req.Email); err != nil {
+		// Log internally but don't expose to client
+		return c.JSON(http.StatusOK, map[string]string{"message": "If an account with that email exists, a password reset link has been sent."})
+	}
+
+	return c.JSON(http.StatusOK, map[string]string{"message": "If an account with that email exists, a password reset link has been sent."})
+}
+
 // ResetPassword is a public endpoint that accepts a token and sets a new password.
 // POST /reset-password
 func (h *PasswordResetHandler) ResetPassword(c *echo.Context) error {

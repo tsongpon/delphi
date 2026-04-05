@@ -90,6 +90,10 @@ type resetPasswordRequest struct {
 	NewPassword string `json:"new_password"`
 }
 
+type forgotPasswordRequest struct {
+	Email string `json:"email"`
+}
+
 type paginatedFeedbackResponse struct {
 	Data       []feedbackResponse `json:"data"`
 	NextCursor string             `json:"next_cursor"`
